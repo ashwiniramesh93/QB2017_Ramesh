@@ -1,7 +1,6 @@
 ---
 title: "Assignment: Local (alpha) Diversity"
-author: "Student Name; Z620: Quantitative Biodiversity, Indiana University"
-date: "`r format(Sys.time(), '%d %B, %Y')`"
+author: "Ashwini Ramesh; Z620: Quantitative Biodiversity, Indiana University"
 output: pdf_document
 geometry: margin=2.54cm
 ---
@@ -35,10 +34,11 @@ In the R code chunk below, please provide the code to:
 4) Load the `vegan` R package (be sure to install if needed).
 
 ```{r}
-
-
-
-
+rm(list=ls())
+getwd()
+setwd("/Users/aramesh/GitHub/QB2017_Ramesh/Week2-Alpha")
+install.packages("vegan")
+require("vegan")
 ```
 
 ## 2) LOADING DATA
@@ -48,8 +48,8 @@ In the R code chunk below, do the following:
 2) Display the structure of the dataset (if the structure is long, use `max.level=0` to show just basic information).
 
 ```{r}
-
-
+data(BCI)
+str(BCI, max.level =0)
 ```
 
 ## 3) SPECIES RICHNESS
@@ -68,16 +68,17 @@ In the R code chunk below, do the following:
 
 ```{r}
 
-# S.obs <- function(   ){
-#   rowSums(     ) * 
-#   }
-
+S.obs <- function(x = ""){rowSums(x >0) * 1 }
+#site1 <- 
+S.obs(BCI)
+specnumber(BCI)
 ```
 
 ***Question 1***: Does `specnumber()` from `vegan` return the same value for observed richness in `site1` as our function `S.obs`?
 What is the species richness of the first 4 sites (i.e., rows) of the BCI matrix?
 
-> ***Answer 1***:
+> ***Answer 1***:Yes, it does.
+The species richness is 1,2,3,4
 
 
 
@@ -90,8 +91,8 @@ In the R code chunk below, do the following:
 2. Use that function to calculate coverage for all sites in the BCI matrix.
 
 ```{r}
-
-
+C <- function(x=""){1 - (rowSums(x==1)/ rowSums(x))}
+C(BCI)
 ```
   
 ***Question 2***: Answer the following questions about coverage:
@@ -101,14 +102,14 @@ b.  What would we conclude from Good's Coverage if $n_{i}$ equaled *N*?
 c.  What portion of taxa in `site1` were represented by singletons? 
 d.  Make some observations about coverage at the BCI plots.
 
-> ***Answer 2a***:  
+> ***Answer 2a***:  0 to 1
 
-> ***Answer 2b***:  
+> ***Answer 2b***:  C = 0, which would mean that there is poor coverage across site
 
-> ***Answer 2c***:  
+> ***Answer 2c***:  ((C[1]/S.obs[1])-1)*(-1) or sum(BCI[1,])/S.obs[1]
 
 > ***Answer 2d***:  
-
+?????
 
 ### Estimated Richness
 
@@ -125,25 +126,26 @@ In the R code chunk below, do the following:
 5. Calculate the coverage at that particular site
 
 ```{r}
-
-
-
-
-
-
+getwd()
+soilbac <- read.table("data/soilbac.txt", sep ="\t", header = TRUE, row.names =1)
+str(soilbac)
+soilbac.t <- as.data.frame(t(soilbac))
+soilbac1 <- soilbac.t[1,]
+S.obs(soilbac1)
+C(soilbac1)
 ```
 
 ***Question 3***: Answer the following questions about the soil bacterial dataset. 
 
 a.  How many sequences did we recover from the sample `soilbac1`, i.e. *N*? 
 b.  What is the observed richness of `soilbac1`? 
-c.  How does coverage compare between the BCI sample (`site1`) and the KBS sample (`soilbac1`)?
+c.  How does coverage compare between the BCI sample (`site1`) and the KBS sample (`soilbac1`)? 
 
-> ***Answer 3a***:  
+> ***Answer 3a***:  13310
 
-> ***Answer 3b***: 
+> ***Answer 3b***: 1074
 
-> ***Answer 3c***:  
+> ***Answer 3c***:  BCI coverage is 0.93, while in soilbac is 0.64. There is 7% more species in BCI than soilbac
 
 
 ### Richness Estimators
@@ -159,16 +161,17 @@ In the R code chunk below, do the following:
 4. Use these functions to estimate richness at both `site1` and `soilbac1`. 
 
 ```{r}
+S.chao1 <- function(x=""){S.obs(x) + sum(x==1)^2/(2*sum(x==2))}
 
-
-
-
-
-
-
-
-
-
+S.chao2 <- function(site = "", SbyS = ""){
+SbyS = as.data.frame(SbyS)
+x = SbyS[site, ]
+SbyS.pa <- (SbyS > 0) * 1
+Q1 = sum(colSums(SbyS.pa) == 1)
+Q2 = sum(colSums(SbyS.pa) == 2) 
+S.chao2 = S.obs(x) + (Q1^2)/(2 * Q2) 
+return(S.chao2)
+}
 
 
 
