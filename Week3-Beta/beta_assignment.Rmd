@@ -62,6 +62,7 @@ In the R code chunk below, do the following:
 library("ade4")
 dat <- data(doubs)
 str(dat)
+dim(doubs$fish)
 ```
 
 ***Question 1***:  Describe some of the attributes of the `doubs` dataset.  
@@ -71,8 +72,10 @@ b.  How many fish species are there in the `doubs` dataset?
 c.  How many sites are in the `doubs` dataset?
 
 > ***Answer 1a***:  4
-> ***Answer 1b***:  30
-> ***Answer 1c***:  27
+> ***Answer 1b***:  27
+> ***Answer 1c***:  30
+#Use dim and double check the data frame for 1a, 1b
+#@Will: I got this bit now. I have corrected this for my own future reference.
 
 ### Visualizing the Doubs River Dataset
 
@@ -146,23 +149,28 @@ In order to quantify $\beta$-diversity for more than two samples, we need to int
 
 ***Question 4***: How do incidence- and abundance-based metrics differ in their treatment of rare species?
 
-> ***Answer 4***:  
+> ***Answer 4***:  Incidence-based (IB) metric uses only the presence absence of a species in the site, while abundance-based (AB) metrics uses a count of number of species in the site. Let's suppose that the 3 sites have 0, 1, 100 abundance of the same species (where 1 is "relatively rare"). While IB metric simply categorizes both 1 and 100 as "1", AB metric weights the species. Having 1 or 2 or 3 species may not actually be very different from 0, but a 100 would be. Since, IB uses shared species across sites data, there could possibly be inflated "1"s when accounting for rare species. AB metrics, like Morisita-Horn, instead use relative abundance to account for this.
 
 In the R code chunk below, do the following:  
 
 1. make a new object, `fish`, containing the fish abundance data for the Doubs River, 
 2. remove any sites where no fish were observed (i.e., rows with sum of zero),
-3. construct a resemblance matrix based on SÃ¸rensen's Similarity ("fish.ds"), and
+3. construct a resemblance matrix based on Sorensen's Similarity ("fish.ds"), and
 4. construct a resemblance matrix based on Bray-Curtis Distance ("fish.db").  
 
 ```{r}
+#1.Make a new object, `fish`, containing the fish abundance data for the Doubs River
 fish <- doubs$fish
+
+#2.Remove any sites where no fish were observed (i.e., rows with sum of zero)
 fish <- fish[-8, ] # Remove site 8 from data
 
-# Calculate Sørensen
-fish.ds <- vegdist(fish, method = "bray", binary = TRUE)# This is the quantitabe 
+#3.Construct a resemblance matrix based on Sorensen's Similarity ("fish.ds"), and
+fish.ds <- vegdist(fish, method = "bray", binary = TRUE)# This is the quantifiable 
+fish.ds <- vegdist(fish, method = "bray", binary = TRUE, upper = TRUE, diag = TRUE)
+fish.ds
 
-# Calculate Bray-Curtis
+#Construct a resemblance matrix based on Bray-Curtis Distance ("fish.db").
 fish.db <- vegdist(fish, method = "bray")
 fish.db <- vegdist(fish, method = "bray", upper = TRUE, diag = TRUE)
 fish.db
