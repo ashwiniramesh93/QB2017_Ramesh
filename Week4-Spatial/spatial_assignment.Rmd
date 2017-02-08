@@ -1,7 +1,9 @@
 ---
-title: "Assignment: Spatial Diversity"
-author: "Ashwini Ramesh; Z620: Quantitative Biodiversity, Indiana University"
-output: pdf_document
+title: 'Assignment: Spatial Diversity'
+author: 'Ashwini Ramesh; Z620: Quantitative Biodiversity, Indiana University'
+output:
+  html_document: default
+  pdf_document: default
 geometry: margin=2.54cm
 ---
 
@@ -36,10 +38,9 @@ In the R code chunk below, provide the code to:
 3. Set your working directory to your "*/Week4-Spatial*" folder, and
 
 ```{r, results = 'hide'}
-#rm(list=ls())
-#getwd() 
+rm(list=ls())
+getwd() 
 #setwd("~/GitHub/QuantitativeBiodiversity/QB-2017/Week4-Spatial")
-
 ```
 
 ## 2) LOADING R PACKAGES
@@ -50,29 +51,31 @@ In the R code chunk below, do the following:
 
 ```{r, results = 'hide', message = FALSE, warning = FALSE} 
 require(vegan)
-install.packages('sp') # Classes and methods for handling spatial data require(sp)
+#install.packages('sp') # Classes and methods for handling spatial data 
 require(sp)
-install.packages('ggmap')
+#install.packages('ggmap')
 require(ggmap)
-install.packages('gstat') # Methods for geostatistical analyses
+#install.packages('gstat') # Methods for geostatistical analyses
 require(gstat)
-install.packages('raster') # Methods to create a RasterLayer object require(raster)
-install.packages('RgoogleMaps') # For querying the Google server for static maps. require(RgoogleMaps)
-install.packages('maptools') # Tools for manipulating and reading geospatial data require(maptools)
-install.packages('rgdal') # Geospatial Data Abstraction Library
+#install.packages('raster') # Methods to create a RasterLayer object
+require(raster)
+#install.packages('RgoogleMaps') # For querying the Google server for staticmaps
+require(RgoogleMaps)
+#install.packages('maptools') # Tools for manipulating and reading geospatialdata
+require(maptools)
+#install.packages('rgdal') # Geospatial Data Abstraction Library
 require(rgdal)
-install.packages('simba') # Similarity measures for community data
+#install.packages('simba') # Similarity measures for community data
 require(simba)
-install.packages('gplots') # Programming tools for plotting data
+#install.packages('gplots') # Programming tools for plotting data
 require(gplots)
-install.packages('rgeos') # Geostatistical package, used here for semivariograms require(rgeos)
+#install.packages('rgeos') # Geostatistical package, used here for semivariograms
+require(rgeos)
 require(rgdal)
-
-
 ```
 
 ***Question 1***:  What are the packages `simba`, `sp`, and `rgdal` used for?
-
+  
 > ***Answer 1***:  simba is used to measure similarity measures for community data. sp for the classes and methods for handling spatial data and rgdal for geosatial data absraction library
 
 
@@ -85,10 +88,21 @@ In the R code chunk below, use the example in the handout to do the following:
 4. Remove the first column (i.e., site names) from the OTU matrix.
 
 ```{r, results = 'hide', message = FALSE, warning = FALSE} 
+#1. Load the Site-by-Species matrix for the Indiana ponds datasets: BrownCoData/SiteBySpecies.csv
 Ponds <- read.table(file = "BrownCoData/20130801_PondDataMod.csv", head = TRUE, sep = ",") 
+
+#2. Load the Environmental data matrix: BrownCoData/20130801_PondDataMod.csv
 OTUs <- read.csv(file = "BrownCoData/SiteBySpecies.csv", head = TRUE, sep = ",")
+
+#3. Assign the operational taxonomic units (OTUs) to a variable 'otu.names'
 otu.names <- names(OTUs) # Get the names of the OTUs
+
+#4. Remove the first column (i.e., site names) from the OTU matrix.
 OTUs <- as.data.frame(OTUs[-1]) # remove first column (site names)
+
+#Maximum species richness among each site
+max(specnumber(OTUs))
+
 
 ```
 
@@ -98,7 +112,7 @@ OTUs <- as.data.frame(OTUs[-1]) # remove first column (site names)
 
 ***Question 2b***:  What is the greatest species richness found among sites?
 
-> ***Answer 2b***:  
+> ***Answer 2b***:  Site 1 : 3659
 
 
 ## 4) GENERATE MAPS
@@ -112,13 +126,17 @@ This map will be centered on Brown County, Indiana (39.1 latitude, -86.3 longitu
 lats <- as.numeric(Ponds[, 3]) # latitudes (north and south) 
 lons <- as.numeric(Ponds[, 4]) # longitudes (east and west)
 newmap <- GetMap(center = c(39.1,-86.3), zoom = 10, destfile = "PondsMap.png", maptype="terrain")
-PlotOnStaticMap(newmap, zoom = 10, cex = 2, col = 'blue') # Plot map in RStudio PlotOnStaticMap(newmap, lats, lons, cex = 1, pch = 20, col = 'red', add = TRUE)
+PlotOnStaticMap(newmap, zoom = 10, cex = 2, col = 'blue') # Plot map in RStudio 
 PlotOnStaticMap(newmap, lats, lons, cex = 1, pch = 20, col = 'red', add = TRUE)
 ```
 
 ***Question 3***:  Briefly describe the geographical layout of our sites.
 
-> ***Answer 3***:  
+> ***Answer 3***:  - All points are roughly within Bloomington,IN
+- Five aggregations/clumps found on the map
+- These clumps are spread across fairly uneven surface
+- Each clump has anywhere between 3 ~ 12 sampled points
+
 
 
 In the R code chunk below, do the following:  
@@ -165,21 +183,23 @@ plot(Refuge.Ponds, line = 'r', col = "red", pch = 20, cex = 1.5, add = TRUE)
 
 ***Question 4a***: What are datums and projections?
 
-> ***Answer 4a***:  
+> ***Answer 4a***:Datum: A feature of the different layers used in the map, such that it models/ mimic's the Earth shape in the same exact way.
+Projections: The representation of a point from the spherical coordinate system on a 2-D surface
 
 
 ## 5) UNDERSTANDING SPATIAL AUTOCORRELATION
 
 ***Question 5***: In your own words, explain the concept of spatial autocorrelation.
 
-> ***Answer 5***:
+> ***Answer 5***: It asks "How often/to what extent are spatial variables more likely to be found clustered in space?" If it is very likely, then it represents positive autocorrelation, and if spread out then it represents negative autocorrelation
 
 
 ## 6) EXAMINING DISTANCE-DECAY
 
 ***Question 6***: In your own words, explain what a distance decay pattern is and what it reveals.
 
-> ***Answer 6***:
+> ***Answer 6***: Distance Decay: With increasing geographic distance, what is the rate of similarity between sites? It is touted that this is a decaying function over geographic distance. 
+- What does it reveal? Communities/environments close to one another are more likely to be similar than ones that are further away from each other in space
 
 In the R code chunk below, do the following:  
 
@@ -187,72 +207,82 @@ In the R code chunk below, do the following:
 Note: You will need to use some of the data transformations within the *semivariogram* section of the handout.
 
 ```{r, results = 'hide', message = FALSE, warning = FALSE}
-# Construct a new dataframe for coordinates
-xy <- data.frame(env = Ponds$TDS, pond.name = Ponds$Sample_ID, lats = Ponds$lat, lons = Ponds$long)
-coordinates(xy) <- ~lats+lons # Transform 'xy' into a spatial points dataframe
-# Identify the current projection (i.e., lat-long) and datum (NAD83). In our case, the projection 
-proj4string(xy) <- CRS("+proj=longlat +datum=NAD83") # coordinate reference system (CRS)
-# Then, transform the projection and data so we can get meaningful georeferenced distances 
-UTM <- spTransform(xy, CRS("+proj=utm +zone=51 +ellps=WGS84")) # coordinate reference syst
-UTM <- as.data.frame(UTM)
-xy$lats_utm <- UTM[,2]
-xy$lons_utm <- UTM[,3]
-env.vgm <- variogram(env~1, data = xy)
-plot(env.vgm)
+##Read note attached at the end of this chunk
+
+# # Construct a new dataframe for coordinates
+# xy <- data.frame(pond.name = Ponds$Sample_ID, lats = Ponds$lat, lons = Ponds$long)
+# # Transform 'xy' into a spatial points dataframe
+# coordinates(xy) <- c("lats", "lons")
+# # Identify the current projection (i.e., lat-long) and datum (NAD83). In our case, the projection and datum 
+# proj4string(xy) <- CRS("+proj=longlat + datum=NAD83")
+# # Transform the projection and data, so we can get meaningful distances. In this case, we will use the 
+# UTM <- spTransform(xy, CRS("+proj=utm +zone=51 +ellps=WGS84"))
+# UTM <- as.data.frame(UTM)
+# Ponds$lat_utm <- UTM[,2] # lattitude data
+# Ponds$lon_utm <- UTM[,3] # longitude data
+# # coordinates(Ponds) = ~lats_utm+lons_utm
+# # vgm <- variogram(TDS~1, data=Ponds)
+# # vgm.fit = fit.variogram(vgm, model = vgm(1, "Sph", 900, 1,fit.sill=F, fit.range=F))
+# # plot(vgm, vgm.fit)
+# 
+# # 1) Calculate Bray-Curtis similarity between plots using the `vegdist()` function
+# comm.dist <- 1 - vegdist(OTUs) # Bray-Curtis similarity between the plots 
+# 
+# # 2) Assign UTM lattitude and longitude data to 'lats' and 'lons' variables
+# lats <- as.numeric(Ponds$lats_utm) # lattitude data
+# lons <- as.numeric(Ponds$lons_utm) # longitude data 
+# 
+# # 3) Calculate geographic distance between plots and assign to the variable 'coord.dist'
+# coord.dist <- dist(as.matrix(lats, lons)) # geographical distance between plots
+# 
+# # 4) Transform environmental data to numeric type, and assign to variable 'x1'
+# x1 <- as.numeric(Ponds$"SpC") 
+# 
+# # 5) Using the `vegdist()` function in `simba`, calculate the Euclidean distance between the plots for environmental variables. Assign the result to the variable 'env.dist'
+# env.dist <- vegdist(x1, "euclidean") 
+# 
+# # 6) Transform all distance matrices into database format using the `liste()` function in `simba`:
+# comm.dist.ls <- liste(comm.dist, entry="comm")
+# env.dist.ls <- liste(env.dist, entry="env")
+# coord.dist.ls <- liste(coord.dist, entry="dist") 
+# 
+# # 7) Create a data frame containing similarity of the environment and similarity of community.
+# df <- data.frame(coord.dist.ls, env.dist.ls[,3], comm.dist.ls[,3])
+# 
+# # 8) Attach the columns labels 'env' and 'struc' to the dataframe you just made.
+# names(df)[4:5] <- c("env", "struc")
+# attach(df)
+# 
+# # 9) After setting the plot parameters, plot the distance-decay relationships, with regression lines in red.
+# par(mfrow=c(1, 2), pty="s")
+# plot(env, struc, xlab="Environmental Distance", ylab="1 - Bray-Curtis",
+# main = "Environment", col='SteelBlue')
+# OLS <- lm(struc ~ env)
+# OLS # print regression results to the screen
+# abline(OLS, col="red4")
+# plot(dist, struc, xlab="Geographic Distance", ylab="1 - Bray-Curtis",
+# main="Community\nComposition", col='darkorchid4')
+# OLS <- lm(struc ~ dist)
+# OLS # print regression results to the screen
+# abline(OLS, col="red4")
+# 
+# # 10) Use `simba` to calculates the difference in slope or intercept of two regression lines
+# diffslope(env, struc, dist, struc)
 
 
-
-
-
-
-# 1) Calculate Bray-Curtis similarity between plots using the `vegdist()` function
-comm.dist <- 1 - vegdist(OTUs)
-
-# 2) Assign UTM lattitude and longitude data to 'lats' and 'lons' variables
-lats <- as.numeric(xy$lats_utm)
-lons <- as.numeric(xy$lons_utm)
-
-# 3) Calculate geographic distance between plots and assign to the variable 'coord.dist'
-coord.dist <- dist(as.matrix(lats,lons))
-
-# 4) Transform environmental data to numeric type, and assign to variable 'x1'
-x1 <- as.numeric(Ponds$"SpC")
-
-# 5) Using the `vegdist()` function in `simba`, calculate the Euclidean distance between the plots for environmental variables. Assign the result to the variable 'env.dist'
-env.dist <- vegdist(x1, "euclidean") 
-# 6) Transform all distance matrices into database format using the `liste()` function in `simba`:
-comm.dist.ls <- liste(comm.dist, entry="comm") 
-env.dist.ls <- liste(env.dist, entry="env") 
-coord.dist.ls <- liste(coord.dist, entry="dist")
-
-# 7) Create a data frame containing similarity of the environment and similarity of community.
-df <- data.frame(coord.dist.ls, env.dist.ls[,3], comm.dist.ls[,3])
-# 8) Attach the columns labels 'env' and 'struc' to the dataframe you just made.
-names (df)[4:5] <- c("env","struc")
-# 9) After setting the plot parameters, plot the distance-decay relationships, with regression lines in red.
-par(mfrow=c(1, 2), pty="s")
-plot(env, struc, xlab="Environmental Distance", ylab="1 - Bray-Curtis",
-     main = "Environment", col='SteelBlue')
-# 10) Use `simba` to calculates the difference in slope or intercept of two regression lines
-OLS <- lm(struc ~ env)
-OLS
-abline(OLS, col = "red4")
-
-plot(dist, struc = )
-
+#Thi runs when I'm running the chunk individually on the script (Look at PNG attached in the uploaded folder.However, it refuses to knit on the HTML. Also, it does not give me the specific problematic line and just directs me to the first line of the chunk.  I'm commenting out the lines for the knit. 
 ```
 
 
-***Question 7***: What can you conclude about community similarity with regars to environmental distance and geographic distance?
+***Question 7***: What can you conclude about community similarity with regards to environmental distance and geographic distance?
 
-> ***Answer 7***: 
-
+> ***Answer 7***: The community similarity experiences decay with increasing environmental distance when compared to the geographic distance. This means that communities that have more similar environmental conditions are more similar than those that differ. However, communities that are closer in the physical space are no different from communities that are far away from one another.
 
 ## 7) EXAMINING SPECIES SPATIAL ABUNDANCE DISTRIBUTIONS
 
 ***Question 8***: In your own words, explain the species spatial abundance distribution and what it reveals.
 
-> ***Answer 8***:
+> ***Answer 8***:A SAD plot primarily asks: "At a given abundance, how many counts of a particular individual can one find?" Thus, SAD is a histogram of individual counts at varying abundances
 
 
 In the R code chunk below, do the following: 
@@ -262,12 +292,27 @@ In the R code chunk below, do the following:
 
 ```{r}
 # 1. Define an SSAD function
+ssad <- function(x){
+ad <- c(2, 2)
+ad <- OTUs[, otu]
+ad = as.vector(t(x = ad))
+ad = ad[ad > 0]
+}
 
 # 2. Set plot parameters
+par(mfrow=c(2, 2))
 
 # 3. Declare a counter variable
-
+ct <- 0 # a counter variable
 # 4. Write a while loop to plot the SSADs of six species chosen at random 
+while (ct < 4){ # While the ct variable is less than 4, do ...
+otu <- sample(1:length(OTUs), 1) # choose 1 random OTU
+ad <- ssad(otu) # find the OTU's SSAD
+if (length(ad) > 10 & sum(ad > 100)){ct <- ct + 1
+plot(density(ad), col = 'red', xlab='Site abundance',
+ylab='Probability Density', main = otu.names[otu])
+}
+}
 
 ```
 
@@ -277,14 +322,14 @@ Many patterns of biodiversity relate to spatial scale.
 
 ***Question 9***:  List, describe, and give examples of the two main aspects of spatial scale
 
-> ***Answer 9***: 
+> ***Answer 9***: Extent and Grain are the two main aspects of a spatial scale. While 'Extent' denotes the greatest distance accounted for in the study, 'Grain' denotes the smallest constituent unit of measurement in the study. 
 
 
 ## 9) CONSTRUCTING THE SPECIES-AREA RELATIONSHIP
 
 ***Question 10***: In your own words, describe the species-area relationship.
 
-> ***Answer 10***: 
+> ***Answer 10***: The species-area relationship states that with increasing sampling area one is more likely to find greater number of species associated with the area and that this pattern is dictated by the Arrhenius power law. 
 
 
 In the R code chunk below, provide the code to: 
@@ -293,9 +338,24 @@ In the R code chunk below, provide the code to:
 
 ```{r, results = 'hide', message = FALSE, warning = FALSE}
 # 1. Declare variables to hold simulated community and species information 
-
-# 2. Populate the simulated landscape
-
+community <- c() # an initiall empty community
+species <- c() # with zero species
+# 2. Populate the simulated landscapeinitiate the plot, i.e., landscape
+plot(0, 0, col='white', xlim = c(0, 100), ylim = c(0, 100),
+xlab='x coordinate', ylab='y coordinate',
+main='A simulated landscape occupied by 100
+species, having 1 to 1000 individuals each.')
+while (length(community) < 100){ # while the community has less than 100 species
+# choose the mean, standard deviation, and species color at random
+std <- runif(1, 1, 10)
+ab <- sample(1000, 1)
+x <- rnorm(ab, mean = runif(1, 0, 100), sd = std)
+y <- rnorm(ab, mean = runif(1, 0, 100), sd = std)
+color <- c(rgb(runif(1),runif(1),runif(1)))
+points(x, y, pch=".", col=color)
+species <- list(x, y, color)
+community[[length(community)+1]] <- species
+}
 
 ```
 
@@ -306,10 +366,28 @@ While consult the handout for assistance, in the R chunk below, provide the code
 
 ```{r}
 # 1. Declare the spatial extent and lists to hold species richness and area data
+lim <- 10 # smallest spatial extent. This also equals the spatial grain.
+S.list <- c() # holds the number of species
+A.list <- c() # holds the spatial scales
 
 # 2. Construct a 'while' loop and 'for' loop combination to quantify the numbers of species for progressively larger areas of the simulated landscape.
+while (lim <= 100){S <- 0 # initiate richness at zero
+for (sp in community){ # for each species in the community
+xs <- sp[[1]] # assign the x coordinates
+ys <- sp[[2]] # assign the y coordinates
+sp.name <- sp[[3]] # assign the species name
+xy.coords <- cbind(xs, ys) # combine the columns for x and y coordinates
+for (xy in xy.coords){ # for each pair of xy coordinates
+if (max(xy) <= lim){ # if the individual is within our current spatial extent...
+S <- S + 1 # then the species occurs there
+break # break out of the last for loop because we now know the species occurs inside our samplign }
+}
+}# 3. Be sure to log10-transform the richness and area data 
+S.list <- c(S.list, log10(S))
+A.list <- c(A.list, log10(lim^2))
+lim <- lim * 2 # increase the extent multiplicately
+}}
 
-# 3. Be sure to log10-transform the richness and area data
 ```
 
 
@@ -320,18 +398,57 @@ In the R code chunk below, provide the code to:
 3. Add a legend for the z-value (i.e., slope of the SAR)
 
 ```{r, results = 'hide', message = FALSE, warning = FALSE}
-
+results <- lm(S.list ~ A.list)
+plot(A.list, S.list, col="dark red", pch=20, cex=2,
+main="Species-area relationship",
+xlab='ln(Area)', ylab='ln(Richness)')
+abline(results, col="red", lwd=2)
+int <- round(results[[1]][[1]],2)
+z <- round(results[[1]][[2]],2)
+legend(x=2, y=2, paste(c('slope = ', z), collapse = " "), cex=0.8,
+box.lty=0)
 ```
 
 
 ***Question 10a***: Describe how richness relates to area in our simulated data by interpreting the slope of the SAR.
 
 > ***Answer 10a***: 
+The simulation reveals that the slope of the relationship is 0.02 i.e.((y2 - y1)/ (x2 - x1)) = 0.02. This means than for a difference of every 100 units on the x-axis(or sampling area) there is a corresponding increase of 2 units on the y-axis(or species richness scale). Here all scales are log-transformed. 
 
 ***Question 10b***: What does the y-intercept of the SAR represent?
 
-> ***Answer 10b***: 
+> ***Answer 10b***: The y-intercept of SAR ~ 0.8 and the equation of the line is y = 0.02x + 0.8. Essentially, here the modelling is saying that for 0 area coverage the species richness is 0.8. Biologically this has no meaning. However, overall one can gather that, given that this relationship here is positive, the minimum species richness at any given area will always be 0.8.  
 
 
 ## SYNTHESIS
 Load the dataset you are using for your project. Plot and discuss either the geogrpahic Distance-Decay relationship, the SSADs for at least four species, or any variant of the SAR (e.g., random accumulation of plots or areas, accumulation of contiguous plots or areas, nested design).
+
+```{r, results = 'hide', message = FALSE, warning = FALSE}
+SbyS_mammals <- read.table("SbyS_mammals.txt", quote = , sep = "\t", header = TRUE, fill = TRUE)
+env_mammals <- read.table("MCDB_sites.csv", quote = "", sep = ",", header = TRUE, fill = TRUE)
+xy_mammals <- data.frame(siteID = env_mammals$Site_ID, lats = env_mammals$Latitude, lons = env_mammals$Longitude)
+
+# 1) Calculate Bray-Curtis similarity between plots using the `vegdist()` function
+comm.dist_m <- 1 - vegdist(SbyS_mammals)
+# 2) Assign UTM lattitude and longitude data to 'lats' and 'lons' variables
+lats <- as.numeric(xy_mammals$lats)
+lons <- as.numeric(xy_mammals$lons)
+# 3) Calculate geographic distance between plots and assign to the variable 'coord.dist'
+coord.dist_m <- dist(as.matrix(lats, lons))
+# 6) Transform all distance matrices into database format using the `liste()` function in `simba`:
+comm.dist.ls_m <- liste(comm.dist_m, entry = "comm")
+coord.dist.ls_m <- liste(coord.dist_m, entry = "dist")
+# 7) Create a data frame containing similarity of community.
+df <- data.frame(coord.dist.ls_m, comm.dist.ls_m[,3])
+# 8) Attach the columns labels 'struc' to the dataframe you just made.
+names(df)[4] <- c("struc")
+attach(df)
+# 9) After setting the plot parameters, plot the distance-decay relationships, with regression lines in red.
+par(mfrow = c(1,2), pty = "s")
+plot(dist, struc, xlab = "Geographic Distance", ylab = "1 - Bray-Curtis", main = "Community\nComposition", col = "darkorchid4")
+OLS <- lm(struc ~ dist)
+OLS
+abline(OLS, col = "red4")
+```
+
+> ***Answer SYNTHESIS***: The regression indicates that there is a negative relationship between geographic distance and BC for community composition. However, the R^2 values ~ 0.07 indicating this is a weak relationship and explains very little of the variation in data. Perhaps envrionmental conditions could better explain spatial auto-correlation in data. We are working on ways to extract this information from other sources.
