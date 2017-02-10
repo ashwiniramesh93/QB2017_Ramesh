@@ -1,7 +1,6 @@
 ---
 title: "Assignment: Temporal Diversity"
-author: "Student Name; Z620: Quantitative Biodiversity, Indiana University"
-date: "`r format(Sys.time(), '%d %B, %Y')`"
+author: "Ashwini Ramesh; Z620: Quantitative Biodiversity, Indiana University"
 output: pdf_document
 geometry: margin=2.54cm
 ---
@@ -55,7 +54,8 @@ In the R code chunk below, do the following:
 2. explore the structure of the dataset.
 
 ```{r}
-
+portal <- read.table("data/combined.csv", sep =",", header = TRUE)
+str(portal)
 
 
 
@@ -67,7 +67,7 @@ a.  How many plots are in `portal`?
 b.  How many rodent species are there in the `portal` dataset?
 
 > ***Answer 1a***:  
-> ***Answer 1b***:  
+> ***Answer 1b***:  48
 
 ## 3) WRANGLING THE PORTAL DATASET
 
@@ -80,6 +80,15 @@ In the R code chunk below, do the following:
 5. Using the hypothesis testing tools you learned in the beta-diversity module, test the hypothesis that species abundances across sites vary as a factor of treatment type (i.e., plot_type). 
 
 ```{r}
+require(dplyr)
+require(tidyr)
+site.by.species <- group_by(portal, year, plot_id) %>% count(species_id) %>% spread(key = species_id, value = n, fill =0)
+dplyr::filter(site.by.species, year == 1984)
+
+site.by.species <- group_by(portal, year, plot_id, plot_type) %>% count(species_id) %>% spread(key = species_id, value = n, fill =0)
+dplyr::filter(site.by.species, year == 1984)
+
+
 
 ```
 
@@ -102,6 +111,28 @@ In the R code chunk below, do the following:
 6. Use the tools outlined in the Handout to create an ARMA model.
 
 ```{r}
+install.packages('tidyr')
+install.packages("codyn")
+install.packages('dplyr')
+install.packages("cowplot")
+install.packages("MullerPlot")
+install.packages("RColorBrewer")
+install.packages("reshape2")
+install.packages("lubridate")
+install.packages("TTR")
+install.packages("xtable")
+install.packages("multcomp")
+install.packages("pander")
+install.packages("png")
+install.packages("grid")
+install.packages("tseries")
+install.packages("nlme")
+install.packages("forecast")
+install.packages("lsmeans")
+
+require(tidyr)
+portal <- unite(portal, col = date, c(year,month,day), sep = "-", remove = FALSE)
+time
 
 ```
 
