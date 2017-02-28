@@ -2,8 +2,8 @@
 title: 'Assignment: Spatial Diversity'
 author: 'Ashwini Ramesh; Z620: Quantitative Biodiversity, Indiana University'
 output:
-  html_document: default
   pdf_document: default
+  html_document: default
 geometry: margin=2.54cm
 ---
 
@@ -209,65 +209,65 @@ Note: You will need to use some of the data transformations within the *semivari
 ```{r, results = 'hide', message = FALSE, warning = FALSE}
 ##Read note attached at the end of this chunk
 
-# # Construct a new dataframe for coordinates
-# xy <- data.frame(pond.name = Ponds$Sample_ID, lats = Ponds$lat, lons = Ponds$long)
-# # Transform 'xy' into a spatial points dataframe
-# coordinates(xy) <- c("lats", "lons")
-# # Identify the current projection (i.e., lat-long) and datum (NAD83). In our case, the projection and datum 
-# proj4string(xy) <- CRS("+proj=longlat + datum=NAD83")
-# # Transform the projection and data, so we can get meaningful distances. In this case, we will use the 
-# UTM <- spTransform(xy, CRS("+proj=utm +zone=51 +ellps=WGS84"))
-# UTM <- as.data.frame(UTM)
-# Ponds$lat_utm <- UTM[,2] # lattitude data
-# Ponds$lon_utm <- UTM[,3] # longitude data
-# # coordinates(Ponds) = ~lats_utm+lons_utm
-# # vgm <- variogram(TDS~1, data=Ponds)
-# # vgm.fit = fit.variogram(vgm, model = vgm(1, "Sph", 900, 1,fit.sill=F, fit.range=F))
-# # plot(vgm, vgm.fit)
-# 
-# # 1) Calculate Bray-Curtis similarity between plots using the `vegdist()` function
-# comm.dist <- 1 - vegdist(OTUs) # Bray-Curtis similarity between the plots 
-# 
-# # 2) Assign UTM lattitude and longitude data to 'lats' and 'lons' variables
-# lats <- as.numeric(Ponds$lats_utm) # lattitude data
-# lons <- as.numeric(Ponds$lons_utm) # longitude data 
-# 
-# # 3) Calculate geographic distance between plots and assign to the variable 'coord.dist'
-# coord.dist <- dist(as.matrix(lats, lons)) # geographical distance between plots
-# 
-# # 4) Transform environmental data to numeric type, and assign to variable 'x1'
-# x1 <- as.numeric(Ponds$"SpC") 
-# 
-# # 5) Using the `vegdist()` function in `simba`, calculate the Euclidean distance between the plots for environmental variables. Assign the result to the variable 'env.dist'
-# env.dist <- vegdist(x1, "euclidean") 
-# 
-# # 6) Transform all distance matrices into database format using the `liste()` function in `simba`:
-# comm.dist.ls <- liste(comm.dist, entry="comm")
-# env.dist.ls <- liste(env.dist, entry="env")
-# coord.dist.ls <- liste(coord.dist, entry="dist") 
-# 
-# # 7) Create a data frame containing similarity of the environment and similarity of community.
-# df <- data.frame(coord.dist.ls, env.dist.ls[,3], comm.dist.ls[,3])
-# 
-# # 8) Attach the columns labels 'env' and 'struc' to the dataframe you just made.
-# names(df)[4:5] <- c("env", "struc")
-# attach(df)
-# 
-# # 9) After setting the plot parameters, plot the distance-decay relationships, with regression lines in red.
-# par(mfrow=c(1, 2), pty="s")
-# plot(env, struc, xlab="Environmental Distance", ylab="1 - Bray-Curtis",
-# main = "Environment", col='SteelBlue')
-# OLS <- lm(struc ~ env)
-# OLS # print regression results to the screen
-# abline(OLS, col="red4")
-# plot(dist, struc, xlab="Geographic Distance", ylab="1 - Bray-Curtis",
-# main="Community\nComposition", col='darkorchid4')
-# OLS <- lm(struc ~ dist)
-# OLS # print regression results to the screen
-# abline(OLS, col="red4")
-# 
-# # 10) Use `simba` to calculates the difference in slope or intercept of two regression lines
-# diffslope(env, struc, dist, struc)
+# Construct a new dataframe for coordinates
+xy <- data.frame(pond.name = Ponds$Sample_ID, lats = Ponds$lat, lons = Ponds$long)
+# Transform 'xy' into a spatial points dataframe
+coordinates(xy) <- c("lats", "lons")
+# Identify the current projection (i.e., lat-long) and datum (NAD83). In our case, the projection and datum
+proj4string(xy) <- CRS("+proj=longlat + datum=NAD83")
+# Transform the projection and data, so we can get meaningful distances. In this case, we will use the
+UTM <- spTransform(xy, CRS("+proj=utm +zone=51 +ellps=WGS84"))
+UTM <- as.data.frame(UTM)
+Ponds$lat_utm <- UTM[,2] # lattitude data
+Ponds$lon_utm <- UTM[,3] # longitude data
+# coordinates(Ponds) = ~lats_utm+lons_utm
+# vgm <- variogram(TDS~1, data=Ponds)
+# vgm.fit = fit.variogram(vgm, model = vgm(1, "Sph", 900, 1,fit.sill=F, fit.range=F))
+# plot(vgm, vgm.fit)
+
+# 1) Calculate Bray-Curtis similarity between plots using the `vegdist()` function
+comm.dist <- 1 - vegdist(OTUs) # Bray-Curtis similarity between the plots
+
+# 2) Assign UTM lattitude and longitude data to 'lats' and 'lons' variables
+lats <- as.numeric(Ponds$lats_utm) # lattitude data
+lons <- as.numeric(Ponds$lons_utm) # longitude data
+
+# 3) Calculate geographic distance between plots and assign to the variable 'coord.dist'
+coord.dist <- dist(as.matrix(lats, lons)) # geographical distance between plots
+
+# 4) Transform environmental data to numeric type, and assign to variable 'x1'
+x1 <- as.numeric(Ponds$"SpC")
+
+# 5) Using the `vegdist()` function in `simba`, calculate the Euclidean distance between the plots for environmental variables. Assign the result to the variable 'env.dist'
+env.dist <- vegdist(x1, "euclidean")
+
+# 6) Transform all distance matrices into database format using the `liste()` function in `simba`:
+comm.dist.ls <- liste(comm.dist, entry="comm")
+env.dist.ls <- liste(env.dist, entry="env")
+coord.dist.ls <- liste(coord.dist, entry="dist")
+
+# 7) Create a data frame containing similarity of the environment and similarity of community.
+df <- data.frame(coord.dist.ls, env.dist.ls[,3], comm.dist.ls[,3])
+
+# 8) Attach the columns labels 'env' and 'struc' to the dataframe you just made.
+names(df)[4:5] <- c("env", "struc")
+attach(df)
+
+# 9) After setting the plot parameters, plot the distance-decay relationships, with regression lines in red.
+par(mfrow=c(1, 2), pty="s")
+plot(env, struc, xlab="Environmental Distance", ylab="1 - Bray-Curtis",
+main = "Environment", col='SteelBlue')
+OLS <- lm(struc ~ env)
+OLS # print regression results to the screen
+abline(OLS, col="red4")
+plot(dist, struc, xlab="Geographic Distance", ylab="1 - Bray-Curtis",
+main="Community\nComposition", col='darkorchid4')
+OLS <- lm(struc ~ dist)
+OLS # print regression results to the screen
+abline(OLS, col="red4")
+
+# 10) Use `simba` to calculates the difference in slope or intercept of two regression lines
+diffslope(env, struc, dist, struc)
 
 
 #Thi runs when I'm running the chunk individually on the script (Look at PNG attached in the uploaded folder.However, it refuses to knit on the HTML. Also, it does not give me the specific problematic line and just directs me to the first line of the chunk.  I'm commenting out the lines for the knit. 

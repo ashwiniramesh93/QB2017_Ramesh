@@ -1,7 +1,6 @@
 ---
 title: "Phylogenetic Diversity - Communities"
-author: "Student Name; Z620: Quantitative Biodiversity, Indiana University"
-date: "`r format(Sys.time(), '%d %B, %Y')`"
+author: "Ashwini R; Z620: Quantitative Biodiversity, Indiana University"
 output: pdf_document
 geometry: margin=2.54cm
 ---
@@ -41,15 +40,11 @@ In the R code chunk below, provide the code to:
 5. load the required R source file.
 
 ```{r}
-
-
-
-
-
-
-
-
-
+package.list <- c('picante', 'ape', 'seqinr', 'vegan', 'fossil', 'simba') 
+for (package in package.list) {if (!require(package, character.only = TRUE, quietly = TRUE)) 
+  { install.packages(package, repos='http://cran.us.r-project.org') 
+  library(package, character.only = TRUE)
+} }
 
 ```
 
@@ -70,10 +65,44 @@ In the R code chunk below, do the following:
 6. load the taxonomic data using the `read.tax()` function from the source-code file.
 
 ```{r}
+getwd()
+require("reshape")||install.packages("reshape");require("reshape")
 
+# Import OTU Site-by-Species Matrix
+read.otu <- function(shared = " ", cutoff = "0.03"){
+  matrix <- read.table(shared, header=T, fill=TRUE, comment.char="", sep="\t")
+  matrix.cutoff <- subset(matrix, matrix$label == cutoff)
+  matrix.out    <- as.matrix(matrix.cutoff[1:dim(matrix.cutoff)[1],
+                                           4:(3+mean(matrix.cutoff$numOtus))])
+  row.names(matrix.out) <- matrix.cutoff$Group
+  return(matrix.out)
+  }
 
+# Import Taxonomy Information
+read.tax <- function(taxonomy = " ", format = "rdp"){
+  tax_raw <- read.delim(taxonomy)                 # load genus-level data
+  if (format == "rdp"){
+    tax <- cbind(OTU = tax_raw[,1],colsplit(tax_raw[,3], split="\\;",
+               names=c("Domain","Phylum","Class","Order","Family","Genus")))
+    for (i in 2:7){
+      tax[,i] <- gsub("\\(.*$", "", tax[,i])
+    }
+  } else {
+    stop("This funciton currently only works for RDP taxonomy")
+  }
+  return(tax)
+}
 
-
+ 
+env <- read.table("data/20130801_PondDataMod.csv", sep = ",", header = TRUE)
+env <- na.omit(env)
+comm <- read.otu(shared = "./data/INPonds.final.rdp.shared", cutoff = "1")
+comm <- comm[grep("*-DNA", rownames(comm)), ]
+rownames(comm) <- gsub("\\-DNA", "", rownames(comm)) 
+rownames(comm) <- gsub("\\_", "", rownames(comm))
+comm <- comm[rownames(comm) %in% env$Sample_ID, ]
+comm <- comm[ , colSums(comm) > 0]
+tax <- read.tax(taxonomy = "./data/INPonds.final.rdp.1.cons.taxonomy")
 
 
 
@@ -92,14 +121,19 @@ Next, in the R code chunk below, do the following:
 
 ```{r}
 
-
-
-
-
-
-
-
-
+ponds.cons <- read.alignment(file = "./data/INPonds.final.rdp.1.rep.fasta", format = "fasta")
+ponds.cons$nam <- gsub("\\|.*$", "", gsub("^.*?\t", "", ponds.cons$nam))
+outgroup <- read.alignment(file = "./data/methanosarcina.fasta", format = "fasta") # Convert alignment file to DNAbin
+DNAbin <- rbind(as.DNAbin(outgroup), as.DNAbin(ponds.cons))
+image.DNAbin(DNAbin, show.labels=T, cex.lab = 0.05, las = 1)
+seq.dist.jc <- dist.dna(DNAbin, model = "JC", pairwise.deletion = FALSE) # Make a neigbor-joining tree file (`ape`)
+phy.all <- bionj(seq.dist.jc)
+phy <- drop.tip(phy.all, phy.all$tip.label[!phy.all$tip.label %in% c(colnames(comm), "Methanosarcina")])
+outgroup <- match("Methanosarcina", phy$tip.label) # Root the tree {ape}
+phy <- root(phy, outgroup, resolve.root = TRUE)
+par(mar = c(1, 1, 2, 1) + 0.1)
+plot.phylo(phy, main = "Neighbor Joining Tree", "phylogram", show.tip.label = FALSE,
+           use.edge.length = FALSE, direction = "right", cex = 0.6, label.offset = 1)
 ```
 
 ## 4) PHYLOGENETIC ALPHA DIVERSITY
@@ -109,8 +143,7 @@ In the R code chunk below, do the following:
 1. calculate Faith's D using the `pd()` function.
 
 ```{r}
-
-
+pd <- pd(comm, phy, include.root = FALSE)
 ```
 
 In the R code chunk below, do the following:  
@@ -119,11 +152,16 @@ In the R code chunk below, do the following:
 3. calculate the scaling exponent. 
 
 ```{r}
-
-
-
-
-
+par(mar = c(5, 5, 4, 1) + 0.1)
+plot(log(pd$S), log(pd$PD),
+pch = 20, col = "red", las = 1,
+xlab = "ln(S)", ylab = "ln(PD)", cex.main = 1, main="Phylodiversity (PD) vs. Taxonomic richness (S)")
+# Test of power-law relationship
+fit <- lm('log(pd$PD) ~ log(pd$S)')
+abline(fit, col = "red", lw = 2)
+exponent <- round(coefficients(fit)[2], 2)
+legend("topleft", legend=paste("Scaling exponent = ", exponent, sep = ""),
+       bty = "n", lw = 2, col = "red")
 ```
 
 ***Question 1***: Answer the following questions about the PD-S pattern.    
@@ -144,7 +182,7 @@ In the R code chunk below, do the following:
 
 ```{r}
 
-
+ses.pd <- ses.pd(comm[1:2,],phy, null.model = "richness", runs = 25, include.root = FALSE)
 
 
 ```
@@ -166,8 +204,7 @@ In the R code chunk below, do the following:
 1. calculate the phylogenetic resemblance matrix for taxa in the Indiana ponds data set.
 
 ```{r}
-
-
+phydist <- cophenetic.phylo(phy)
 ```
 
 **ii.  Net Relatedness Index (NRI)**
@@ -176,7 +213,11 @@ In the R code chunk below, do the following:
 1. Calculate the NRI for each site in the Indiana ponds data set. 
 
 ```{r}
-
+#Estimate standardized effect size of NRI via randomization (`picante`)
+ses.mpd <- ses.mpd(comm, phydist, null.model = "taxa.labels", abundance.weighted = FALSE, runs = 25)
+# Calculate NRI
+NRI <- as.matrix(-1 * ((ses.mpd[,2] - ses.mpd[,3]) / ses.mpd[,4])) rownames(NRI) <- row.names(ses.mpd)
+colnames(NRI) <- "NRI"
 
 
 
@@ -218,7 +259,11 @@ In the R code chunk below, do the following:
 
 ```{r}
 
-
+# Estimate Standardized Effect Size of NRI via Randomization {picante}
+ses.mntd <- ses.mntd(comm, phydist, null.model = "taxa.labels", abundance.weighted = FALSE, runs = 25)
+# Calculate NTI
+NTI <- as.matrix(-1 * ((ses.mntd[,2] - ses.mntd[,3]) / ses.mntd[,4]))
+rownames(NTI) <- row.names(ses.mntd) colnames(NTI) <- "NTI"
 
 
 ```
@@ -227,11 +272,14 @@ In the R code chunk below, do the following:
 1. plot Mean Pair Distance versus UniFrac distance and compare.
 
 ```{r}
-
-
-
-
-
+# Mean Pairwise Distance
+dist.mp <- comdist(comm, phydist)
+# UniFrac Distance (Note: this takes a few minutes; be patient)
+dist.uf <- unifrac(comm, phy)
+par(mar = c(5, 5, 2, 1) + 0.1) plot(dist.mp, dist.uf,
+pch = 20, col = "red", las = 1, asp = 1, xlim = c(0.15, 0.5), ylim = c(0.15, 0.5),
+xlab = "Mean Pair Distance", ylab = "UniFrac Distance") abline(b = 1, a = 0, lty = 2)
+text(0.5, 0.47, "1:1")
 ```
 
 ***Question 4***: 
@@ -256,7 +304,7 @@ In the R code chunk below, do the following:
 
 ```{r}
 
-
+  
 
 
 
@@ -272,18 +320,27 @@ In the R code chunk below, do the following:
 4. customize the plot. 
 
 ```{r}
+pond.pcoa <- cmdscale(dist.uf, eig = T, k = 3)
+explainvar1 <- round(pond.pcoa$eig[1] / sum(pond.pcoa$eig), 3) * 100 
+explainvar2 <- round(pond.pcoa$eig[2] / sum(pond.pcoa$eig), 3) * 100 
+explainvar3 <- round(pond.pcoa$eig[3] / sum(pond.pcoa$eig), 3) * 100 
+sum.eig <- sum(explainvar1, explainvar2, explainvar3)
 
+# Define Plot Parameters
+par(mar = c(5, 5, 1, 2) + 0.1)
+# Initiate Plot
+plot(pond.pcoa$points[ ,1], pond.pcoa$points[ ,2],
+xlim = c(-0.2, 0.2), ylim = c(-.16, 0.16),
+xlab = paste("PCoA 1 (", explainvar1, "%)", sep = ""),
+ylab = paste("PCoA 2 (", explainvar2, "%)", sep = ""),
+pch = 16, cex = 2.0, type = "n", cex.lab = 1.5, cex.axis = 1.2, axes = FALSE)
 
-
-
-
-
-
-
-
-
-
-
+# Add Axes
+axis(side = 1, labels = T, lwd.ticks = 2, cex.axis = 1.2, las = 1) axis(side = 2, labels = T, lwd.ticks = 2, cex.axis = 1.2, las = 1) abline(h = 0, v = 0, lty = 3)
+box(lwd = 2)
+# Add Points & Labels
+points(pond.pcoa$points[ ,1], pond.pcoa$points[ ,2], pch = 19, cex = 3, bg = "gray", col = "gray")
+text(pond.pcoa$points[ ,1], pond.pcoa$points[ ,2], labels = row.names(pond.pcoa$points))
 ```
 
 In the following R code chunk:
@@ -302,11 +359,16 @@ In the R code chunk below, do the following:
 1. test the hypothesis that watershed has an effect on the phylogenetic diversity of bacterial communities.
 
 ```{r}
-
-
-
-
-
+# Define Environmental Category
+watershed <- env$Location
+# Run PERMANOVA with `adonis()` Function {vegan}
+adonis(dist.uf ~ watershed, permutations = 999)
+# We can compare to PERMANOVA results based on taxonomy
+adonis(
+vegdist( # create a distance matrix on
+decostand(comm, method = "log"), # log-transformed relative abundances 
+method = "bray")~watershed,
+perumutations = 999)
 ```
 
 **ii. Continuous Approach**
@@ -316,6 +378,12 @@ In the R code chunk below, do the following:
 2. calculate environmental distance between ponds based on the Euclidean distance between sites in the environmental data matrix (after transforming and centering using `scale()`).
 
 ```{r}
+# Define environmental variables
+envs <- env[, 5:19]
+# Remove redudnant variables
+envs <- envs[, -which(names(envs) %in% c("TDS", "Salinity", "Cal_Volume"))]
+# Create distance matrix for environmental variables
+env.dist <- vegdist(scale(envs), method = "euclid")
 
 
 
@@ -326,8 +394,8 @@ In the R code chunk below, do the following:
 1. conduct a Mantel test to evaluate whether or not UniFrac distance is correlated with environmental variation.
 
 ```{r}
-
-
+# Conduct Mantel Test (`vegan`)
+mantel(dist.uf, env.dist)
 ```
 
 Last, conduct a distance-based Redundancy Analysis (dbRDA). 
@@ -338,15 +406,42 @@ In the R code chunk below, do the following:
 3. plot the dbRDA results
 
 ```{r}
-
-
-
-
-
-
-
-
-
+# Conduct dbRDA (`vegan`)
+ponds.dbrda <- vegan::dbrda(dist.uf ~ ., data = as.data.frame(scale(envs)))
+# Permutation tests: axes and environmental variables
+anova(ponds.dbrda, by = "axis")
+ponds.fit <- envfit(ponds.dbrda, envs, perm = 999) ponds.fit
+# Calculate explained variation
+dbrda.explainvar1 <- round(ponds.dbrda$CCA$eig[1] /
+sum(c(ponds.dbrda$CCA$eig, ponds.dbrda$CA$eig)), 3) * 100
+dbrda.explainvar2 <- round(ponds.dbrda$CCA$eig[2] /
+sum(c(ponds.dbrda$CCA$eig, ponds.dbrda$CA$eig)), 3) * 100
+# Make dbRDA plot
+# Define plot parameters
+par(mar = c(5, 5, 4, 4) + 0.1)
+# Initiate plot
+plot(scores(ponds.dbrda, display = "wa"), xlim = c(-2, 2), ylim = c(-2, 2), xlab = paste("dbRDA 1 (", dbrda.explainvar1, "%)", sep = ""),
+ylab = paste("dbRDA 2 (", dbrda.explainvar2, "%)", sep = ""),
+pch = 16, cex = 2.0, type = "n", cex.lab = 1.5, cex.axis = 1.2, axes = FALSE)
+# Add axes
+axis(side = 1, labels = T, lwd.ticks = 2, cex.axis = 1.2, las = 1) axis(side = 2, labels = T, lwd.ticks = 2, cex.axis = 1.2, las = 1) abline(h = 0, v = 0, lty = 3)
+box(lwd = 2)
+# Add points & labels
+points(scores(ponds.dbrda, display = "wa"),
+pch = 19, cex = 3, bg = "gray", col = "gray")
+text(scores(ponds.dbrda, display = "wa"),
+labels = row.names(scores(ponds.dbrda, display = "wa")), cex = 0.5)
+# Add environmental vectors
+vectors <- scores(ponds.dbrda, display = "bp") 
+#row.names(vectors) <- c("Temp", "DO", "chla", "DON") 
+arrows(0, 0, vectors[,1] * 2, vectors[, 2] * 2,
+lwd = 2, lty = 1, length = 0.2, col = "red") 
+text(vectors[,1] * 2, vectors[, 2] * 2, pos = 3,
+labels = row.names(vectors))
+axis(side = 3, lwd.ticks = 2, cex.axis = 1.2, las = 1, col = "red", lwd = 2.2,
+at = pretty(range(vectors[, 1])) * 2, labels = pretty(range(vectors[, 1]))) 
+axis(side = 4, lwd.ticks = 2, cex.axis = 1.2, las = 1, col = "red", lwd = 2.2,
+at = pretty(range(vectors[, 2])) * 2, labels = pretty(range(vectors[, 2])))
 
 ```
 
@@ -368,13 +463,20 @@ In the R code chunk below, do the following:
 
 ```{r}
 
-
-
-
-
-
-
-
+# Geographic distances (kilometers) among ponds
+long.lat <- as.matrix(cbind(env$long, env$lat)) coord.dist <- earth.dist(long.lat, dist = TRUE)
+# Taxonomic similarity among ponds (Bray-Curits distance)
+bray.curtis.dist <- 1 - vegdist(comm)
+# Phylogenetic similarity among ponds (UniFrac)
+unifrac.dist <- 1 - dist.uf
+# Transform all distances into list format:
+unifrac.dist.ls <- liste(unifrac.dist, entry = "unifrac") bray.curtis.dist.ls <- liste(bray.curtis.dist, entry = "bray.curtis") coord.dist.ls <- liste(coord.dist, entry = "geo.dist")
+env.dist.ls <- liste(env.dist, entry = "env.dist")
+# Create a data frame from the lists of distances
+df <- data.frame(coord.dist.ls, bray.curtis.dist.ls[, 3], unifrac.dist.ls[, 3], env.dist.ls[, 3])
+names(df)[4:6] <- c("bray.curtis", "unifrac", "env.dist")
+# Set initial plot parameters
+par(mfrow=c(2, 1), mar = c(1, 5, 2, 1) + 0.1, oma = c(2, 0, 0, 0))
 
 ```
 
@@ -385,22 +487,28 @@ In the R code chunk below, do the following:
 3. add trend lines to each.
 
 ```{r}
-
-
-
-
-
-
-
-
-
+# Make plot for taxonomic DD
+plot(df$geo.dist, df$bray.curtis, xlab = "", xaxt = "n", las = 1, ylim = c(0.1, 0.9), ylab="Bray-Curtis Similarity",
+main = "Distance Decay", col = "SteelBlue")
+# Regression for taxonomic DD
+DD.reg.bc <- lm(df$bray.curtis ~ df$geo.dist) summary(DD.reg.bc)
+abline(DD.reg.bc , col = "red4", lwd = 2)
+# New plot parameters
+par(mar = c(2, 5, 1, 1) + 0.1)
+# Make plot for phylogenetic DD
+plot(df$geo.dist, df$unifrac, xlab = "", las = 1, ylim = c(0.1, 0.9), ylab = "Unifrac Similarity", col = "darkorchid4")
+# Regression for phylogenetic DD
+DD.reg.uni <- lm(df$unifrac ~ df$geo.dist) summary(DD.reg.uni)
+abline(DD.reg.uni, col = "red4", lwd = 2)
+# Add x-axis label to plot
+mtext("Geographic Distance (km)", side = 1, adj = 0.55, line = 0.5, outer = TRUE)
 ```
 
 In the R code chunk below, test if the trend lines in the above distance decay relationships are different from one another.
 
 ```{r}
 
-
+diffslope(df$geo.dist, df$unifrac, df$geo.dist, df$bray.curtis)
 
 ```
 
@@ -437,12 +545,53 @@ In the R code chunk below, do the following:
 5. customize the PDAR plot. 
 
 ```{r}
+PDAR <- function(comm, tree){
+  # Create Objects to hold areas and diversity
+areas <- c() diversity <- c()
+  # Create vector increasing number of plots by 2x
+num.plots <- c(2, 4, 8, 16, 32, 51)
+  for (i in num.plots){
+    # Create vectors to hold areas and diversity form iterations, used for means
+areas.iter <- c() diversity.iter <- c()
+    # Iterate 10 times per sample size
+for (j in 1:10){
+# Sample w/o replacement
+pond.sample <- sample(51, replace = FALSE, size = i)
+      # Create variable and vector to hold accumulating area and taxa
+area <- 0 
+sites <- c()
+for (k in pond.sample) { # Loop through each randomly drawn pond 
+  area <- area + pond.areas[k] # Aggregating area (roughly doubling) 
+  sites <- rbind(sites, comm[k, ]) # And sites
+}
+      # Concatenate the area to areas.iter
+areas.iter <- c(areas.iter, area)
+# Calculate PSV or other phylogenetic alpha-diversity metric
+psv.vals <- psv(sites, tree, compute.var = FALSE) 
+psv <- psv.vals$PSVs[1]
+diversity.iter <- c(diversity.iter, as.numeric(psv)) }
+diversity <- c(diversity, mean(diversity.iter)) # Let Diversity be the Mean PSV areas <- c(areas, mean(areas.iter)) # Let areas be the Average Area print(c(i, mean(diversity.iter), mean(areas.iter))) # Print As We Go
+}
+# Return vectors of areas (x) and diversity (y)
+return(cbind(areas, diversity)) }
 
-
-
-
-
-
+# Calculate areas for ponds: find areas of all ponds
+pond.areas <- as.vector(pi * (env$Diameter/2)^2)
+# Compute the PDAR
+pdar <- PDAR(comm, phy)
+pdar <- as.data.frame(pdar) pdar$areas <- sqrt(pdar$areas)
+# Calculate Pearson's correlation coefficient
+Pearson <- cor.test(pdar$areas, pdar$diversity, method = "pearson") P <- round(Pearson$estimate, 2)
+P.pval <- round(Pearson$p.value, 3)
+# Calculate Spearman's correlation coefficient
+Spearman <- cor.test(pdar$areas, pdar$diversity, method = "spearman") rho <- round(Spearman$estimate, 2)
+rho.pval <- round(Spearman$p.value, 3)
+# Plot the PDAR
+plot.new()
+par(mfrow=c(1, 1), mar = c(1, 5, 2, 1) + 0.1, oma = c(2, 0, 0, 0)) plot(pdar[, 1], pdar[, 2], xlab = "Area", ylab = "PSV", ylim = c(0, 1),
+     main = "Phylogenetic Diversity-Area Relationship",
+     col = "red", pch = 16, las = 1)
+legend("topleft", legend= c(paste("Spearman Correlation = ", rho = ";p=", rho.pval, sep="", paste("Pearson Correlation = ", P, "; p = ", P.pval, sep = "") bty = "n", col = "red")
 
 ```
 
