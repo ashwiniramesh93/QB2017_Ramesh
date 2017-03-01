@@ -519,33 +519,32 @@ In the code chunk below, do the following:
 
 
 ```{r}
-# #Able to run the chunk but unable to knit it. Zero-length calls cannot be mixed with non-xero calls. Execution halted
-# #1. Choose two plot_types or two plot_ids and compare the mean rank shift (MRS) between them.
-# portal.abunds.cont.rodent <- filter(portal.species.abunds, plot_type == "Control" | plot_type == "Rodent Exclosure")
-# 
-# #2. Plot MRS for each through time. 
-# portal.rankshift <- rank_shift(
-# df = as.data.frame(portal.abunds.cont.rodent),
-# time.var = "year",
-# species.var = "taxon",
-# abundance.var = "n",
-# replicate.var = "plot_type")
-# 
-# portal.rankshift$year <- as.numeric(substr(portal.rankshift$year_pair, 6,9))
-# 
-# rankshift.plot <- ggplot(portal.rankshift, aes(x = year, y = MRS, color = plot_type))+
-# geom_line(size = 1)+
-# xlim(1977,2002) +
-# xlab("Year")+
-# ylab("Mean Rank Shift")+
-# scale_color_grey()
-# plot(rankshift.plot)
-# 
-# # Analysis for Q 6b
-# group_by(portal.rankshift, plot_type) %>%
-# summarise(
-# mean = mean(MRS),
-# cv = sd(MRS)/mean)
+require(dplyr)
+#Able to run the chunk but unable to knit it. Zero-length calls cannot be mixed with non-xero calls. Execution halted
+#1. Choose two plot_types or two plot_ids and compare the mean rank shift (MRS) between them.
+portal.abunds.cont.rodent <- filter(portal.species.abunds, plot_type == "Control" | plot_type == "Rodent Exclosure")
+
+#2. Plot MRS for each through time.
+portal.rankshift <- rank_shift(
+df = as.data.frame(portal.abunds.cont.rodent),
+time.var = "year",
+species.var = "taxon",
+abundance.var = "n",
+replicate.var = "plot_type")
+
+portal.rankshift$year <- as.numeric(substr(portal.rankshift$year_pair, 6,9))
+
+rankshift.plot <- ggplot(portal.rankshift, aes(x = year, y = MRS, color = plot_type))+
+geom_line(size = 1)+
+xlim(1977,2002) +
+xlab("Year")+
+ylab("Mean Rank Shift")+
+scale_color_grey()
+plot(rankshift.plot)
+
+# Analysis for Q 6b
+group_by(portal.rankshift, plot_type) %>% 
+summarise(mean = mean(MRS),cv = sd(MRS)/mean)
 
 ```
 
