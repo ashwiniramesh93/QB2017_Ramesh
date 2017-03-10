@@ -1,9 +1,7 @@
 ---
 title: 'Assignment: Temporal Diversity'
 author: 'Ashwini Ramesh; Z620: Quantitative Biodiversity, Indiana University'
-output:
-  html_document: default
-  pdf_document: default
+output: pdf_document
 geometry: margin=2.54cm
 ---
 
@@ -520,31 +518,31 @@ In the code chunk below, do the following:
 
 ```{r}
 require(dplyr)
-#Able to run the chunk but unable to knit it. Zero-length calls cannot be mixed with non-xero calls. Execution halted
+#Able to run the chunk but unable to knit it. Zero-length calls cannot be mixed with non-zero calls. Execution halted
 #1. Choose two plot_types or two plot_ids and compare the mean rank shift (MRS) between them.
-portal.abunds.cont.rodent <- filter(portal.species.abunds, plot_type == "Control" | plot_type == "Rodent Exclosure")
-
-#2. Plot MRS for each through time.
-portal.rankshift <- rank_shift(
-df = as.data.frame(portal.abunds.cont.rodent),
-time.var = "year",
-species.var = "taxon",
-abundance.var = "n",
-replicate.var = "plot_type")
-
-portal.rankshift$year <- as.numeric(substr(portal.rankshift$year_pair, 6,9))
-
-rankshift.plot <- ggplot(portal.rankshift, aes(x = year, y = MRS, color = plot_type))+
-geom_line(size = 1)+
-xlim(1977,2002) +
-xlab("Year")+
-ylab("Mean Rank Shift")+
-scale_color_grey()
-plot(rankshift.plot)
-
-# Analysis for Q 6b
-group_by(portal.rankshift, plot_type) %>% 
-summarise(mean = mean(MRS),cv = sd(MRS)/mean)
+# portal.abunds.cont.rodent <- filter(portal.species.abunds, plot_type == "Control" | plot_type == "Rodent Exclosure")
+# 
+# #2. Plot MRS for each through time.
+# portal.rankshift <- rank_shift(
+# df = as.data.frame(portal.abunds.cont.rodent),
+# time.var = "year",
+# species.var = "taxon",
+# abundance.var = "n",
+# replicate.var = "plot_type")
+# 
+# portal.rankshift$year <- as.numeric(substr(portal.rankshift$year_pair, 6,9))
+# 
+# rankshift.plot <- ggplot(portal.rankshift, aes(x = year, y = MRS, color = plot_type))+
+# geom_line(size = 1)+
+# xlim(1977,2002) +
+# xlab("Year")+
+# ylab("Mean Rank Shift")+
+# scale_color_grey()
+# plot(rankshift.plot)
+# 
+# # Analysis for Q 6b
+# group_by(portal.rankshift, plot_type) %>% 
+# summarise(mean = mean(MRS),cv = sd(MRS)/mean)
 
 ```
 
@@ -563,29 +561,29 @@ In the R code chunk below, do the following:
 2. Plot the results.
 
 ```{r}
-# #1. Calculate the rate change interval using the Hellinger distance.
-# portal.species.abunds$tot.abund <- rep(sum(portal.species.abunds$n),length(portal.species.abunds$n))
-# 
-# portal.hellinger.tranf <- portal.species.abunds %>%
-# mutate(hellinger.tranf = sqrt(n/tot.abund))
-# 
-# portal.change.into <- rate_change_interval(portal.hellinger.tranf,
-# time.var = "year",
-# species.var = "taxon",
-# abundance.var = "hellinger.tranf",
-# replicate.var = "plot_type")
-# 
-# #2. Plot the results.
-# 
-# rate.plot <- ggplot(portal.change.into, aes(interval, distance)) +
-# geom_point()+
-# facet_wrap(~plot_type)+
-# theme(strip.text.x = element_text(size = 7))+
-# stat_smooth(method = "loess", se = F, size =1)+
-# ylab("Hellinger Distance")+
-# xlab("Time Interval (Years)")
-# 
-# rate.plot
+#1. Calculate the rate change interval using the Hellinger distance.
+portal.species.abunds$tot.abund <- rep(sum(portal.species.abunds$n),length(portal.species.abunds$n))
+
+portal.hellinger.tranf <- portal.species.abunds %>%
+mutate(hellinger.tranf = sqrt(n/tot.abund))
+
+portal.change.into <- rate_change_interval(portal.hellinger.tranf,
+time.var = "year",
+species.var = "taxon",
+abundance.var = "hellinger.tranf",
+replicate.var = "plot_type")
+
+#2. Plot the results.
+
+rate.plot <- ggplot(portal.change.into, aes(interval, distance)) +
+geom_point()+
+facet_wrap(~plot_type)+
+theme(strip.text.x = element_text(size = 7))+
+stat_smooth(method = "loess", se = F, size =1)+
+ylab("Hellinger Distance")+
+xlab("Time Interval (Years)")
+
+rate.plot
 
 ```
 
@@ -609,117 +607,117 @@ In the R code chunk below, do the following:
 3. Test for a biodiversity-stability relationship by regressing community stability on mean inverse Simpson's diversity.
 
 ```{r}
-# #1. Using total abundance as your focal variable, calculate stability (i.e., 1/CV) and synchrony for each plot type.
-# 
-# #Stability
-# portal.stab <- community_stability(df = as.data.frame(portal.species.abunds),
-# time.var = "year",
-# abundance.var = "n",
-# replicate.var = "plot_type")
-# pander(portal.stab)
-# 
-# #Synchrony
-# portal.loreau <- synchrony(df = as.data.frame(portal.species.abunds),
-# time.var = "year",
-# species.var = "taxon",
-# abundance.var = "n",
-# replicate.var = "plot_type",
-# metric = "Loreau")
-# 
-# names(portal.loreau)[2] <- "loreau"
-# 
-# portal.gross <- synchrony(df = as.data.frame(portal.species.abunds),
-# time.var = "year",
-# species.var = "taxon",
-# abundance.var = "n",
-# replicate.var = "plot_type",
-# metric = "Gross")
-# 
-# names(portal.gross)[2] <- "gross"
-# 
-# pander(full_join(portal.loreau, portal.gross))
-# 
-# 
-# #2. Test for a biodiversity-stability relationship by regressing community stability on mean richness. 
-# time.by.species <- group_by(portal, year, plot_id, plot_type) %>%
-# count(taxon) %>%
-# spread(key = taxon, value = n, fill =0)
-# 
-# richness <- as.data.frame(rowSums(time.by.species[,-c(1:3)] > 0))
-# rich.all <- data.frame(time.by.species[,1:3,], richness)
-# names(rich.all)[4] <- "richness"
-# 
-# portal.mean.rich.plot <- rich.all %>%
-# group_by(plot_id) %>%
-# summarise(mean.rich = mean(richness))
-# 
-# portal.plot.abunds <- as.data.frame(
-# group_by(portal, year, plot_id) %>% count(taxon))
-# portal.stab.plot <- community_stability(df = portal.plot.abunds,
-# time.var = "year",
-# abundance.var = "n",
-# replicate.var = "plot_id")
-# 
-# portal.div.stab <- portal.mean.rich.plot %>%
-# inner_join(portal.stab.plot)
-# 
-# par(mar = c(5,5,1,1))
-# plot(portal.div.stab$stability ~ portal.div.stab$mean.rich,
-# xlab = "", ylab = "", yaxt ="n", xaxt = "n", xli = c(2,10), ylim = c(1,4))
-# axis(side = 1, cex.axis = 1.2,lwd.ticks = 2, las = 1)
-# axis(side = 2, cex.axis = 1.2,lwd.ticks = 2, las = 1)
-# axis(side = 3, cex.axis = 1.2,lwd.ticks = 2, las = 1)
-# axis(side = 4, cex.axis = 1.2,lwd.ticks = 2, las = 1)
-# box(lwd = 2)
-# mtext("Mean Richness", side = 1, line =3, cex = 1.5)
-# mtext("Aggregate Stability", side = 2, line =3.5, cex = 1.5)
-# mtext(expression(paste("(CV"^"-1","Total abundance)")), side = 2, line = 2.25, cex = 0.8)
-# div.stab.lm <- lm(portal.div.stab$stability ~ portal.div.stab$mean.rich)
-# abline(div.stab.lm)
-# r2 <- bquote(italic(R)^2 == .(format(summary(div.stab.lm)$adj.r.square, digits= 3)))
-# text(3.25,3.75, cex = 1.5, labels = r2)
-# 
-# 
+#1. Using total abundance as your focal variable, calculate stability (i.e., 1/CV) and synchrony for each plot type.
+
+#Stability
+portal.stab <- community_stability(df = as.data.frame(portal.species.abunds),
+time.var = "year",
+abundance.var = "n",
+replicate.var = "plot_type")
+pander(portal.stab)
+
+#Synchrony
+portal.loreau <- synchrony(df = as.data.frame(portal.species.abunds),
+time.var = "year",
+species.var = "taxon",
+abundance.var = "n",
+replicate.var = "plot_type",
+metric = "Loreau")
+
+names(portal.loreau)[2] <- "loreau"
+
+portal.gross <- synchrony(df = as.data.frame(portal.species.abunds),
+time.var = "year",
+species.var = "taxon",
+abundance.var = "n",
+replicate.var = "plot_type",
+metric = "Gross")
+
+names(portal.gross)[2] <- "gross"
+
+pander(full_join(portal.loreau, portal.gross))
+
+
+#2. Test for a biodiversity-stability relationship by regressing community stability on mean richness.
+time.by.species <- group_by(portal, year, plot_id, plot_type) %>%
+count(taxon) %>%
+spread(key = taxon, value = n, fill =0)
+
+richness <- as.data.frame(rowSums(time.by.species[,-c(1:3)] > 0))
+rich.all <- data.frame(time.by.species[,1:3,], richness)
+names(rich.all)[4] <- "richness"
+
+portal.mean.rich.plot <- rich.all %>%
+group_by(plot_id) %>%
+summarise(mean.rich = mean(richness))
+
+portal.plot.abunds <- as.data.frame(
+group_by(portal, year, plot_id) %>% count(taxon))
+portal.stab.plot <- community_stability(df = portal.plot.abunds,
+time.var = "year",
+abundance.var = "n",
+replicate.var = "plot_id")
+
+portal.div.stab <- portal.mean.rich.plot %>%
+inner_join(portal.stab.plot)
+
+par(mar = c(5,5,1,1))
+plot(portal.div.stab$stability ~ portal.div.stab$mean.rich,
+xlab = "", ylab = "", yaxt ="n", xaxt = "n", xli = c(2,10), ylim = c(1,4))
+axis(side = 1, cex.axis = 1.2,lwd.ticks = 2, las = 1)
+axis(side = 2, cex.axis = 1.2,lwd.ticks = 2, las = 1)
+axis(side = 3, cex.axis = 1.2,lwd.ticks = 2, las = 1)
+axis(side = 4, cex.axis = 1.2,lwd.ticks = 2, las = 1)
+box(lwd = 2)
+mtext("Mean Richness", side = 1, line =3, cex = 1.5)
+mtext("Aggregate Stability", side = 2, line =3.5, cex = 1.5)
+mtext(expression(paste("(CV"^"-1","Total abundance)")), side = 2, line = 2.25, cex = 0.8)
+div.stab.lm <- lm(portal.div.stab$stability ~ portal.div.stab$mean.rich)
+abline(div.stab.lm)
+r2 <- bquote(italic(R)^2 == .(format(summary(div.stab.lm)$adj.r.square, digits= 3)))
+text(3.25,3.75, cex = 1.5, labels = r2)
+
+
 #3. Test for a biodiversity-stability relationship by regressing community stability on mean inverse Simpson's diversity.
-# time.by.species <- group_by(portal, year, plot_id, plot_type) %>%
-# count(taxon) %>%
-# spread(key = taxon, value = n, fill =0)
-# 
-# div1 <- diversity(time.by.species[,-c(1:3)],"inv")
-# #richness <- as.data.frame(rowSums(time.by.species[,-c(1:3)] > 0))
-# richness <- div1
-# rich.all <- data.frame(time.by.species[,1:3,], richness)
-# names(rich.all)[4] <- "richness"
-# 
-# portal.mean.rich.plot <- rich.all %>%
-# group_by(plot_id) %>%
-# summarise(mean.rich = mean(richness))
-# 
-# portal.plot.abunds <- as.data.frame(
-# group_by(portal, year, plot_id) %>% count(taxon))
-# portal.stab.plot <- community_stability(df = portal.plot.abunds,
-# time.var = "year",
-# abundance.var = "n",
-# replicate.var = "plot_id")
-# 
-# portal.div.stab <- portal.mean.rich.plot %>%
-# inner_join(portal.stab.plot)
-# 
-# par(mar = c(5,5,1,1))
-# plot(portal.div.stab$stability ~ portal.div.stab$mean.rich,
-# xlab = "", ylab = "", yaxt ="n", xaxt = "n", xli = c(2,10), ylim = c(1,4))
-# axis(side = 1, cex.axis = 1.2,lwd.ticks = 2, las = 1)
-# axis(side = 2, cex.axis = 1.2,lwd.ticks = 2, las = 1)
-# axis(side = 3, cex.axis = 1.2,lwd.ticks = 2, las = 1)
-# axis(side = 4, cex.axis = 1.2,lwd.ticks = 2, las = 1)
-# box(lwd = 2)
-# mtext("Mean Simpsons inverse", side = 1, line =3, cex = 1.5)
-# mtext("Aggregate Stability", side = 2, line =3.5, cex = 1.5)
-# mtext(expression(paste("(CV"^"-1","Total abundance)")), side = 2, line = 2.25, cex = 0.8)
-# div.stab.lm <- lm(portal.div.stab$stability ~ portal.div.stab$mean.rich)
-# abline(div.stab.lm)
-# r2 <- bquote(italic(R)^2 == .(format(summary(div.stab.lm)$adj.r.square, digits= 3)))
-# text(3.25,3.75, cex = 1.5, labels = r2)
+time.by.species <- group_by(portal, year, plot_id, plot_type) %>%
+count(taxon) %>%
+spread(key = taxon, value = n, fill =0)
+
+div1 <- diversity(time.by.species[,-c(1:3)],"inv")
+#richness <- as.data.frame(rowSums(time.by.species[,-c(1:3)] > 0))
+richness <- div1
+rich.all <- data.frame(time.by.species[,1:3,], richness)
+names(rich.all)[4] <- "richness"
+
+portal.mean.rich.plot <- rich.all %>%
+group_by(plot_id) %>%
+summarise(mean.rich = mean(richness))
+
+portal.plot.abunds <- as.data.frame(
+group_by(portal, year, plot_id) %>% count(taxon))
+portal.stab.plot <- community_stability(df = portal.plot.abunds,
+time.var = "year",
+abundance.var = "n",
+replicate.var = "plot_id")
+
+portal.div.stab <- portal.mean.rich.plot %>%
+inner_join(portal.stab.plot)
+
+par(mar = c(5,5,1,1))
+plot(portal.div.stab$stability ~ portal.div.stab$mean.rich,
+xlab = "", ylab = "", yaxt ="n", xaxt = "n", xli = c(2,10), ylim = c(1,4))
+axis(side = 1, cex.axis = 1.2,lwd.ticks = 2, las = 1)
+axis(side = 2, cex.axis = 1.2,lwd.ticks = 2, las = 1)
+axis(side = 3, cex.axis = 1.2,lwd.ticks = 2, las = 1)
+axis(side = 4, cex.axis = 1.2,lwd.ticks = 2, las = 1)
+box(lwd = 2)
+mtext("Mean Simpsons inverse", side = 1, line =3, cex = 1.5)
+mtext("Aggregate Stability", side = 2, line =3.5, cex = 1.5)
+mtext(expression(paste("(CV"^"-1","Total abundance)")), side = 2, line = 2.25, cex = 0.8)
+div.stab.lm <- lm(portal.div.stab$stability ~ portal.div.stab$mean.rich)
+abline(div.stab.lm)
+r2 <- bquote(italic(R)^2 == .(format(summary(div.stab.lm)$adj.r.square, digits= 3)))
+text(3.25,3.75, cex = 1.5, labels = r2)
 ```
 
 ***Question 8***:
@@ -742,7 +740,7 @@ Range: -1 to +1, where + 1 implies that all species increase/decrease identicall
 
 
 
-> ***Answer 8c***:> ***Answer 8c***:In accordance with the biodiversity-stability theory, we see that stability increases in a community with increases with mean species richness (R2 = 0.41). However, on using Simpson's index, which accounts for both species richness and evenness, we observe that this relationship between mean species richness and stability is weakly related, suggesting that inferring about the causal mechanisms of stability may not be as straightforward as it appears.
+> ***Answer 8c***:In accordance with the biodiversity-stability theory, we see that stability increases in a community with increases with mean species richness (R2 = 0.41). However, on using Simpson's index, which accounts for both species richness and evenness, we observe that this relationship between mean species richness and stability is weakly related, suggesting that inferring about the causal mechanisms of stability may not be as straightforward as it appears.
 
 
 ## SYNTHESIS
