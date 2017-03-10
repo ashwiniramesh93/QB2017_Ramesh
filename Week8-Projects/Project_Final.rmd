@@ -1,0 +1,736 @@
+---
+title: 'Understanding Pattern of Mammalian Distribution: A Global Analysis'
+author: Ashwini Ramesh and Evgeniya Polezhaeva, Quantitative Biodiversity, Indiana
+  University
+output:
+  html_document: default
+  pdf_document: default
+geometry: margin=2.54cm
+---
+
+## R Markdown
+
+## ABSTRACT
+Understanding mammalian distribution patterns has been widely recognized as a challenging problem in today's field, owing to the large number of factors that could potentially affect its distribution. This study aims to understand the global pattern of mammalian distribution by mainly focusing on two previously recorded key-drivers of mammalian distribution: climatic variables (temperature and precipitation) and body size. Based on previously established theories and literature survey, we hypothesize that climatic would strongly influence species richness and evenness. Increasing temperature and precipitations would result in increasing species richness, but decreasing evenness in the community. Body size of mammals is expected to follow Bergmann's rule that states that with higher latitude and lower temperature individuals tend to be larger. The study shows that there is no relationship between climatic variables or body-size to that of mammalian distribution. We discuss the departure of these relationships from that indicated by previous findings and demonstrate the possibility of a truly random global distribution of mammals.
+
+## 1) INTRODUCTION
+Understanding the mammalian distribution pattern has posed to be an interesting yet challenging problem. Scientists have used several approaches in tackling this question. Some of these approaches include phylogenetic relationships among species, influence of environmental variables, or how metabolism of an organism can determine the niche it occupies. The aim of this study is to contribute towards understanding some of these mechanisms of mammalian distribution operating in nature. More specifically, the study focusses on two main factors that could affect mammalian distribution across the globe (a) Climatic Variables (b) Mammalian Body size. 
+Overall, the null hypothesis for the study is that mammals are distributed randomly across the landscape. 
+For each of the factors affecting mammalian distribution, we propose the following alternate hypothesis based on previously established theories and literature survey: 
+(a) Climatic Variables: Temperature and Precipitation have been known to be key-drivers of distribution of flora and fauna. Precipitation, the driver of productivity is known to be highest in the tropics and has been recorded to harbor the greatest diversity in species. Species richness has also been shown to have the same relationship to environmental temperature as metabolic rate does, thus attributing the richness to biochemical kinetics of an organism. It is also well studied that both precipitation and temperature decline as one moves from the tropics towards the poles. Using these findings from literature, we predict the following: 
+H1: Species Richness increases with increase in degree of climatic change  
+H2: Species Evenness decreases with increase in degree of climatic change  
+H3: Simpson's Diversity (Richness + Evenness) should show no relationship with climate change 
+Further, using ordination analysis, we investigate if mammalian distribution can be explained by geographic, or phylogenetic clumping. We also investigate the contribution of climatic variables in understanding these mammalian abundance patterns.  
+(b) Body Size: Large mammals have larger surface area to volume ratio than smaller mammals, resulting in less heat radiation per unit of mass and can thus afford to stay warmer in cooler climates. This is the underlying principal of Bergmann's rule, an ecogeographical rule that was formulated to explain patterns of mammalian distribution across latitudes. Using these findings from literature, we predict the following: 
+H4: In a broadly distributed taxonomic clade, populations and species of larger size are found in colder environments, and species of smaller size are found in warmer regions. 
+
+## 2) SETUP
+```{r}
+rm(list=ls())
+getwd()
+#setwd("D:/Jane/IU/QB/Mammals")
+```
+
+## 3) DESCRIPTION OF DATA
+This is metadata that describes abundance data of mammals o different sites across the globe. The data-set consists of 700 mammal species grouped to 17 orders across 1000 different sites. These sites are spread across Asia, Europe, North America, South America, Australia, and Africa. The data-set also contains data listing latitude, longitude, habitat type, range of elevation of the site. Climate data (temperature and precipitation) for each site was extracted from WorldClimate data. Body-weight data was obtained from a publication using this PanTHERIA dataset, with data for 580 from 700 mammal species.
+
+## Load the library
+```{r}
+library("vegan")
+library("ade4")
+library("BiodiversityR")
+library("gplots")
+library("indicspecies")
+library("base64enc")
+library("viridis")
+library("lattice")
+library('simba')
+library('dplyr')
+library('ggplot2')
+library('reshape')
+```
+
+#Create Site-by-Species matrix
+```{r}
+data_mammals <- read.table("MCDB_communities.csv", quote = "", sep = ",", header = TRUE, fill = TRUE)
+#str(data_mammals)
+#summary(data_mammals)
+n_sites <- length(unique(data_mammals$Site_ID))
+n_sp <- length(unique(data_mammals$Species_ID))
+sites <- unique(data_mammals$Site)
+species <- unique(data_mammals$Species)
+dat_SS <- data.frame(data_mammals$Species_ID, data_mammals$Site_ID) 
+#Site-by-Species matrix
+df <- data.frame(matrix(ncol = n_sp, nrow = n_sites)) #Creating Site-by-Species matrix
+colnames(df) <- species
+rownames(df) <- sites
+for (i in 1:nrow(data_mammals)){
+  N_site <- which(data_mammals$Site_ID[i] == sites)
+  N_sp <- which(data_mammals$Species_ID[i] == species)
+  df[N_site, N_sp] <- data_mammals$Abundance[i]
+}
+df[is.na(df)] <- 0
+dfa <- df
+```
+
+#Creating Order-by-Species matrix
+
+```{r}
+#Order by Site Matrix
+dfa <- dfa[order(row.names(dfa)), ]
+df2 <- read.table("MCDB_order_sp.csv", sep = ",", header = TRUE, fill = TRUE)
+i1 <- match(colnames(dfa), df2$Species_ID, nomatch = 0)
+dat <- data.frame(lapply(split.default(dfa[i1], df2$Order[i1]), rowSums))
+which(rowSums(dat)==0) #Removing rows 945 and 993
+dat <- dat[-c(945,993),] #Only has 998 observations now
+
+```
+
+
+#Loading a pre-coded Order-by-continent Matrix and conducting a PCoA analysis
+```{r}
+#PCOA
+dat1 <- read.table("MCDB_order_continent.csv", quote = "", sep = ",", header = TRUE, fill = TRUE)
+#Converting dat1 into a matrix so that we have rownames
+dat <- as.matrix(dat1[,-1])
+row.names(dat) <- dat1[,1]
+which(rowSums(dat)==0) #Removing rows 945 and 993
+which(is.na(dat), arr.ind=TRUE) #Removing rows 999 and 1000
+dat <- dat[-c(945,993,999,1000,647,719,720,180,181,436,437),]#Only has 996 observations now + Last three numbers from climate data
+which(rowSums(dat)==0) #Nothing
+which(is.na(dat), arr.ind=TRUE) #Nothing
+
+#Bray Curtis
+dat.db <- vegdist(dat, method = "bray")
+dat.pcoa <- cmdscale(dat.db, eig = TRUE, k = 3)
+explainvar1 <- round(dat.pcoa$eig[1] / sum(dat.pcoa$eig), 3) * 100
+explainvar2 <- round(dat.pcoa$eig[2] / sum(dat.pcoa$eig), 3) * 100
+explainvar3 <- round(dat.pcoa$eig[3] / sum(dat.pcoa$eig), 3) * 100
+sum.eig <- sum(explainvar1, explainvar2, explainvar3)
+
+# Define Plot Parameters
+par(mar = c(5, 5, 1, 2) + 0.1)
+# Initiate Plot
+plot(dat.pcoa$points[ ,1], dat.pcoa$points[ ,2],
+     xlab = paste("PCoA 1 (", explainvar1, "%)", sep = ""),
+     ylab = paste("PCoA 2 (", explainvar2, "%)", sep = ""),
+     pch = 16, cex = 2.0, type = "n", cex.lab = 1.5, cex.axis = 1.2, axes = FALSE)
+     axis(side = 1, labels = T, lwd.ticks = 2, cex.axis = 1.2, las = 1)
+     axis(side = 2, labels = T, lwd.ticks = 2, cex.axis = 1.2, las = 1)
+     abline(h = 0, v = 0, lty = 3)
+     box(lwd = 2)
+     points(dat.pcoa$points[ ,1], dat.pcoa$points[ ,2],
+       pch = 19, cex = 1, bg = "gray", col = "grey")
+     ordiellipse(ord = dat.pcoa, groups = rownames(dat), kind = "se",conf = .95,col = NULL)
+#text(dat.pcoa$points[ ,1], dat.pcoa$points[ ,2],
+#     labels = row.names(dat.pcoa$points),cex = 0.5)
+```
+
+
+#Extracting information on climatic variables (from WorldClim data) for corresponding sites in the dataset
+```{r}
+#install.packages("raster")
+library(raster)
+library(sp)
+dat1<- read.table("MCDB_sites.csv", quote = "", sep = ",", header = TRUE, fill = TRUE)
+dat1 <- dat1[order(dat1$Site_ID), ]
+r <- getData("worldclim",var="bio",res=10)
+r <- r[[c(1,12)]]
+names(r) <- c("Temp","Prec")
+lats <- dat1[, 6] # latitudes (north and south) 
+lons <- dat1[, 7] # longitudes (east and west)
+as.numeric.factor <- function(x) {as.numeric(levels(x))[x]}
+lats <- as.numeric.factor(lats)
+lons <- as.numeric.factor(lons)
+coords <- data.frame(x=lons,y=lats)
+which(coords == "NA")
+coords[!complete.cases(coords),]
+coords <-coords[-c(945,993,999,1000,647,719,720),]
+#coords[!complete.cases(coords),]#Nothing
+
+points <- SpatialPoints(coords, proj4string = r@crs)
+values <- extract(r,points)
+df1 <- cbind.data.frame(coordinates(points),values) #This dataframe contains 
+df1[!complete.cases(df1),]
+df1 <- na.omit(df1)
+df1$Temp <- df1$Temp/10
+write.csv(df1,"MCDB_LatLong_Climate.csv")
+plot(r[[1]])
+plot(points,add=T)
+
+```
+
+
+#Performing Constrained Ordination to check the influence of climatic variables on spatial distribution of mammals
+```{r}
+# Define environmental matrix
+env.chem <- as.matrix(df1[,3:4])
+# Perform dbRDA
+dat.db <- vegdist(dat, method = "bray")
+doubs.dbrda <- dbrda(dat.db ~ ., as.data.frame(env.chem))
+ordiplot(doubs.dbrda)
+# First, we will model only the intercept
+doubs.dbrda.mod0 <- dbrda(dat.db ~ 1, as.data.frame(env.chem))
+# Note there are no vectors here (we didn't constrain anything)
+# Therefore, the axes suggest this is a simple MDS (i.e., PCoA)
+ordiplot(doubs.dbrda.mod0)
+# Next, we will model the full model, with all explanatory variables
+doubs.dbrda.mod1 <- dbrda(dat.db ~ ., as.data.frame(env.chem))
+# Now we step through all combinations of explanatory variables in our model
+# The function returns the model with the lowest AIC value
+doubs.dbrda <- ordiR2step(doubs.dbrda.mod0, doubs.dbrda.mod1, perm.max = 200)
+# Lets look at the model that was selected
+doubs.dbrda$call
+doubs.dbrda$anova
+ordiplot(doubs.dbrda)
+# Permutation tests to evaluate significance
+permutest(doubs.dbrda, permutations = 999)
+envfit(doubs.dbrda, env.chem[,c(1,2)], perm = 999)
+# Calculate Explained Variation
+dbrda.explainvar1 <- round(doubs.dbrda$CCA$eig[1] /
+                             sum(c(doubs.dbrda$CCA$eig, doubs.dbrda$CA$eig)), 3) * 100
+dbrda.explainvar2 <- round(doubs.dbrda$CCA$eig[2] /
+                             sum(c(doubs.dbrda$CCA$eig, doubs.dbrda$CA$eig)), 3) * 100
+# Define Plot Parameters
+par(mar = c(5, 5, 4, 4) + 0.1)
+# Initiate Plot
+plot(scores(doubs.dbrda, display = "wa"), 
+     xlab = paste("dbRDA 1 (", dbrda.explainvar1, "%)", sep = ""),
+     ylab = paste("dbRDA 2 (", dbrda.explainvar2, "%)", sep = ""),
+     pch = 16, cex = 2.0, type = "n", cex.lab = 1.5, cex.axis = 1.2, axes = FALSE)
+# Add Axes
+axis(side = 1, labels = T, lwd.ticks = 2, cex.axis = 1.2, las = 1)
+axis(side = 2, labels = T, lwd.ticks = 2, cex.axis = 1.2, las = 1)
+abline(h = 0, v = 0, lty = 3)
+box(lwd = 2)
+# Add Points & Labels
+points(scores(doubs.dbrda, display = "wa"),
+       pch = 19, cex = 1, bg = "gray", col = "gray")
+#text(scores(doubs.dbrda, display = "wa"),
+#     labels = row.names(scores(doubs.dbrda, display = "wa")))
+# Add Environmental Vectors
+vectors <- scores(doubs.dbrda, display = "bp")
+#row.names(vectors) <- rownames(vectors)
+arrows(0, 0, vectors[,1], vectors[, 2],
+       lwd = 2, lty = 1, length = 0.2, col = "red")
+text(vectors[,1], vectors[, 2], pos = 3,
+     labels = row.names(vectors))
+axis(side = 3, lwd.ticks=2, cex.axis=1.2, las = 1, col = "red", lwd = 2.2,
+     at = pretty(range(vectors[, 1])) * 2, labels = pretty(range(vectors[, 1])))
+axis(side = 4, lwd.ticks=2, cex.axis=1.2, las = 1, col = "red", lwd = 2.2,
+     at = pretty(range(vectors[, 2])) * 2, labels = pretty(range(vectors[, 2])))
+ordiellipse(doubs.dbrda, groups = rownames(dat), kind = "se",conf = .95,col = NULL)
+```
+
+#Assessing relationstips between richness/eveness and climatic variables
+```{r}
+#Climate by Richness
+dfa <- dfa[-c(945,993,999,1000,647,719,720,180,181,436,437),]
+
+env <- df1$Temp+df1$Prec
+richness <- specnumber(dfa)
+modrichness <- lm(richness ~ env)
+modrichnessT <- lm(log(richness) ~ (1/df1$Temp))
+modrichnessP <- lm(richness ~ df1$Prec)
+  
+summary(modrichness)
+rmse <- round(sqrt(mean(resid(modrichness)^2)), 2)
+coefs <- coef(modrichness)
+b0 <- round(coefs[1], 2)
+b1 <- round(coefs[2],2)
+r2 <- round(summary(modrichness)$r.squared, 2)
+eqn <- bquote(italic(y) == .(b0) + .(b1)*italic(x) * "," ~~ 
+                  r^2 == .(r2))
+
+plot(env, richness,xlab = "Environment Matrix", ylab = "Species Richness")
+abline(modrichness)
+text(10, 40, eqn, pos = 4, col = "Red")
+
+plot(df1$Temp, log(richness),xlab = "1/T", ylab = "ln(Species Richness)")
+abline(modrichnessT)
+text(1, 3.5, eqn, pos = 4, col = "Red")
+
+plot(df1$Prec, richness,xlab = "Precipitation", ylab = "Species Richness")
+abline(modrichnessP)
+text(100, 40, eqn, pos = 4, col = "Red")
+
+
+
+#Climate by Eveness
+Evar <- function(x){
+x <- as.vector(x[x > 0])
+1 - (2/pi)*atan(var(log(x)))
+}
+eveness <- Evar(dat[4,])
+
+eveness <- c()
+for (i in 1:nrow(dat)){
+  eveness[i] <- Evar(dat[i,])
+}
+
+modeven <- lm(eveness ~ env)
+summary(modeven)
+plot(eveness, env)
+rmse <- round(sqrt(mean(resid(modeven)^2)), 2)
+coefs <- coef(modeven)
+b0 <- round(coefs[1], 2)
+b1 <- round(coefs[2],2)
+r2 <- round(summary(modeven)$r.squared, 2)
+eqn <- bquote(italic(y) == .(b0) + .(b1)*italic(x) * "," ~~ 
+                  r^2 == .(r2))
+
+plot(env, eveness,xlab = "Environment Matrix", ylab = "Evar Index",ylim =c(0,1))
+abline(modeven, col = "red")
+text(1700, 0.8, eqn, pos = 4, col = "Red")
+
+
+#Climate by Richness+Evenness
+richeven <- diversity(dat, "simp")
+lm(richeven ~ env)
+plot(env, richeven)
+
+modricheven <- lm(richeven ~ env)
+modrichevenT <- lm(richeven ~ df1$Temp)
+modrichevenP <- lm(richeven ~ df1$Prec)
+
+summary(modricheven)
+
+summary(modricheven)
+rmse <- round(sqrt(mean(resid(modricheven)^2)), 2)
+coefs <- coef(modricheven)
+b0 <- round(coefs[1], 2)
+b1 <- round(coefs[2],2)
+r2 <- round(summary(modricheven)$r.squared, 2)
+eqn <- bquote(italic(y) == .(b0) + .(b1)*italic(x) * "," ~~ 
+                  r^2 == .(r2))
+
+plot(env, richeven,xlab = "Environment Matrix", ylab = "Simpson's Index",ylim =c(0,1))
+abline(modricheven, col = "red")
+text(10, 0.8, eqn, pos = 4, col = "Red")
+
+```
+
+Spatial Body-Size Relationship
+```{r}
+rm(list=ls())
+getwd()
+#setwd("D:/Jane/IU/QB/Mammals")
+data_mammals <- read.table("MCDB_communities.csv", quote = "", sep = ",", header = TRUE, fill = TRUE)
+
+sites <- unique(data_mammals$Site)
+species <- unique(data_mammals$Species)
+n_sites <- length(sites)
+n_sp <- length(species)
+
+SbyS <- data.frame(matrix(ncol = n_sp, nrow = n_sites)) #Creating Site-by-Species matrix
+colnames(SbyS) <- species
+rownames(SbyS) <- sites
+
+for (i in 1:nrow(data_mammals)){
+  N_site <- which(data_mammals$Site_ID[i] == sites)
+  N_sp <- which(data_mammals$Species_ID[i] == species)
+  SbyS[N_site, N_sp] <- data_mammals$Abundance[i]
+}
+SbyS[is.na(SbyS)] <- 0
+
+sites <- read.table("MCDB_sites.csv", quote = "", sep = ",", header = TRUE, fill = TRUE)
+```
+
+```{r, results = 'hide'}
+#Presence-Absence matrix
+SbyS_PA <- SbyS
+SbyS_PA[SbyS_PA > 0] <- 1
+```
+
+```{r}
+r <- getData("worldclim",var="bio",res=10)
+r <- r[[c(1,12)]]
+names(r) <- c("Temp","Prec")
+#lats <- as.numeric(data_sites[, 6]) # latitudes (north and south) 
+#lons <- as.numeric(data_sites[, 7]) # longitudes (east and west)
+lats <- sites[, 6] # latitudes (north and south) 
+lons <- sites[, 7] # longitudes (east and west)
+as.numeric.factor <- function(x) {as.numeric(levels(x))[x]}
+
+lats <- as.numeric.factor(lats)
+lons <- as.numeric.factor(lons)
+coords <- data.frame(x=lons,y=lats)
+coord <- coords
+coords <- coords[complete.cases(coords), ] #added by EDP
+which(coords == "NULL")
+coords <- coords[-c(647,719,720,1647,1719,1720),]
+points <- SpatialPoints(coords, proj4string = r@crs)
+values <- extract(r,points)
+df <- cbind.data.frame(coordinates(points),values) #This dataframe contains climate variables
+colnames(df) <- c("Longitude", "Latitude", "Temp", "Prec")
+plot(r[[1]])
+plot(points,add=T)
+
+colnames(coords) <- c("Longitude", "Latitude")
+temp <- df[,-4] 
+```
+
+#Preparations for Bergnmann's rule
+```{r, results = 'hide'}
+#Upload mammals weight data
+av_mammals <- read.table("PanTHERIA_1-0_WR05_Aug2008.txt", quote = "", sep = "\t", header = TRUE, fill = TRUE)
+av_w <- cbind(av_mammals[,1:4], av_mammals[,7])
+av_w <- cbind(av_w, av_mammals[,37])
+av_w[,7]<-0
+colnames(av_w) <- c("Order", "Family", "Genus", "Species", "M1", "M2", "AdultBodyWeight")
+
+av_w$M1[av_w$M1 < 0] <- NA
+av_w$M2[av_w$M2 < 0] <- NA
+av_w <- within(av_w, 'AdultBodyWeight' <- ifelse(!is.na(M1),M1,M2))
+av_w <- av_w[,-(5:6)]
+av_w <- av_w[complete.cases(av_w), ]
+
+#Uploading the 2nd weight data
+av_mammals2 <- read.table("PanTHERIA_1-0_WR93_Aug2008.txt", quote = "", sep = "\t", header = TRUE, fill = TRUE)
+av_w2 <- cbind(av_mammals2[,1:4], av_mammals2[,7])
+av_w2 <- cbind(av_w2, av_mammals2[,37])
+av_w2[,7]<-0
+
+colnames(av_w2) <- c("Order", "Family", "Genus", "Species", "M1", "M2", "AdultBodyWeight")
+av_w2$M1[av_w2$M1 < 0] <- NA
+av_w2$M2[av_w2$M2 < 0] <- NA
+av_w2 <- within(av_w2, 'AdultBodyWeight' <- ifelse(!is.na(M1),M1,M2))
+av_w2 <- av_w2[,-(5:6)]
+av_w2 <- av_w2[complete.cases(av_w2), ]
+
+#Upload Species decoding data
+name_sp <-  read.table("MCDB_species.csv", quote = "", sep = ",", header = TRUE, fill = TRUE)
+name_sp$Binomial <- paste(name_sp$Genus, name_sp$Species)
+name_sp <- name_sp[,-5]
+
+total1 <- merge(name_sp, av_w, by = c("Genus", "Species"))
+total2 <- merge(name_sp, av_w2, by = c("Genus", "Species"))
+#Average Body Mass Data Frame
+ABM <- rbind(total1, total2)
+ABM <- ABM[!duplicated(ABM[,c('Binomial')]),]
+ABM <- ABM[,-c(5,8)]
+colnames(ABM)[4] <- "Family"
+ABM <- ABM[, c(3, 6, 4, 1, 2, 5, 7)]
+```
+
+#Function for Bergmann 's Rule
+```{r, results = 'hide'}
+#Calculation of average weight
+SbyS_BM <- SbyS[, colnames(SbyS) %in% ABM$Species_ID] #subset of SbyS for BodyMass data
+SbyS_PA_BM <- SbyS_PA[, colnames(SbyS_PA) %in% ABM$Species_ID] 
+         
+BR <- function(level = "", name = ""){
+  AW <- c()
+  AWW <- c()
+  ncol <- which(colnames(ABM) == level)
+  ABM_br <- subset.data.frame(ABM, ABM[,ncol] == name) #Sub ABM with needed species
+  SbyS_PA_br <- SbyS_PA_BM[, colnames(SbyS_PA_BM) %in% ABM_br$Species_ID]
+  
+  for (i in (1:nrow(sites))){
+    site <- sites$Site_ID[i] #save the name of the site for this loop
+    N_site <- which(rownames(SbyS_BM) == site) #save the number of the site in SbyS matrix
+    
+    Q <- 0 # for each site a new sum
+    
+    for (j in (1:ncol(SbyS_PA_br))){
+      sp <- colnames(SbyS_PA_br)[j] #save name of species
+      N_sp <- which(ABM_br$Species_ID == sp) # call the number of a row in "ABM" dataframe
+      Q <- Q + SbyS_PA_br[N_site,j] * ABM_br[N_sp, 7]}
+    
+    if (rowSums(SbyS_PA_br[N_site,]) != 0){
+      AW[i] <- Q / rowSums(SbyS_PA_br[N_site,])
+      } else {AW[i] = NA}}
+return(AW)}
+```
+
+#Body Mass ~ Lattitude for each order
+```{r, results = 'hide', message = FALSE, warning = FALSE}
+str(ABM)
+AW_Artiodactyla <- BR(level="Order",name="Artiodactyla")
+AW_Carnivora <- BR(level="Order",name="Carnivora")
+AW_Cingulata <- BR(level="Order",name="Cingulata")
+AW_Diprotodontia <- BR(level="Order",name="Diprotodontia")
+AW_Dasyuromorphia <- BR(level="Order",name="Dasyuromorphia")
+AW_Didelphimorphia <- BR(level="Order",name="Didelphimorphia")
+AW_Lagomorpha <- BR(level="Order",name="Lagomorpha")
+AW_Peramelemorphia <- BR(level="Order",name="Peramelemorphia")
+AW_Primates <- BR(level="Order",name="Primates")
+AW_Rodentia <- BR(level="Order",name="Rodentia")
+AW_Scandentia <- BR(level="Order",name="Scandentia")
+AW_Soricomorpha <- BR(level="Order",name="Soricomorpha")
+```
+#Plotting BR ABM ~ Latitude
+```{r}
+Latitude_s <- cbind(sites[,1], as.numeric.factor(sites[,6])) #sorted according to SbyS to match the right order of AW_... variables
+colnames(Latitude_s) <- c('Site_ID', 'Latitude')
+Latitude_s <- as.data.frame(Latitude_s)
+Latitude_s <- Latitude_s[match(rownames(SbyS), Latitude_s$Site_ID),]
+
+df_BR_lat <- cbind(Latitude_s[2], AW_Artiodactyla, AW_Carnivora, AW_Cingulata, AW_Diprotodontia, AW_Didelphimorphia, AW_Dasyuromorphia,  AW_Lagomorpha, AW_Peramelemorphia, AW_Primates, AW_Rodentia, AW_Scandentia, AW_Soricomorpha) 
+
+df_BR_lat <- inner_join(df_BR_lat, df, by = "Latitude")
+df_BR_abs <- df_BR_lat[,1:13]
+df_BR_abs$Latitude <- abs(df_BR_abs$Latitude)
+df_BR_abs_melt <- melt(df_BR_abs,  id.vars = 'Latitude', variable.name = 'Order')
+colnames(df_BR_abs_melt) <- c("Latitude", "Order", "ABM")
+df_BR_abs_melt <- df_BR_abs_melt[complete.cases(df_BR_abs_melt), ]
+df_BR_abs_melt <- unique(df_BR_abs_melt, incomparables = FALSE, fromLast = FALSE)
+```
+
+#Calculation of linear regression parameters
+
+```{r}
+arti <- cbind(df_BR_abs[,1], df_BR_abs[,2]) 
+arti <- arti[complete.cases(arti), ]
+Arti <- lm(arti[,2] ~ arti[,1])
+
+carn <- cbind(df_BR_abs[,1], df_BR_abs[,3]) 
+carn <- carn[complete.cases(carn), ]
+Carn <- lm(carn[,2] ~ carn[,1])
+
+cing <- cbind(df_BR_abs[,1], df_BR_abs[,4]) 
+cing <- cing[complete.cases(cing), ]
+Cing <- lm(cing[,2] ~ cing[,1])
+
+dipr <- cbind(df_BR_abs[,1], df_BR_abs[,5]) 
+dipr <- dipr[complete.cases(dipr), ]
+Dipr <- lm(dipr[,2] ~ dipr[,1])
+
+dasy <- cbind(df_BR_abs[,1], df_BR_abs[,6]) 
+dasy <- dasy[complete.cases(dasy), ]
+Dasy <- lm(dasy[,2] ~ dasy[,1])
+
+dide <- cbind(df_BR_abs[,1], df_BR_abs[,7]) 
+dide <- dide[complete.cases(dide), ]
+Dide <- lm(dide[,2] ~ dide[,1])
+
+lago <- cbind(df_BR_abs[,1], df_BR_abs[,8]) 
+lago <- lago[complete.cases(lago), ]
+Lago <- lm(lago[,2] ~ lago[,1])
+
+pera <- cbind(df_BR_abs[,1], df_BR_abs[,9]) 
+pera <- pera[complete.cases(pera), ]
+Pera <- lm(pera[,2] ~ pera[,1])
+
+prim <- cbind(df_BR_abs[,1], df_BR_abs[,10]) 
+prim <- prim[complete.cases(prim), ]
+Prim <- lm(prim[,2] ~ prim[,1])
+
+rode <- cbind(df_BR_abs[,1], df_BR_abs[,11]) 
+rode <- rode[complete.cases(rode), ]
+Rode <- lm(rode[,2] ~ rode[,1])
+
+scan <- cbind(df_BR_abs[,1], df_BR_abs[,12]) 
+scan <- scan[complete.cases(scan), ]
+Scan <- lm(scan[,2] ~ scan[,1])
+
+BR_lat.plot <- ggplot(df_BR_abs_melt , aes(x=Latitude, y=ABM), col = Order) + 
+  geom_point(aes(colour = Order)) +
+  ylim(0, 100000) +
+  xlab("Latitude") +
+  ylab("Average Body Mass, g") +
+  scale_color_grey()+
+  scale_color_brewer(palette="Spectral")
+
+BR_lat_low.plot <- ggplot(df_BR_abs_melt , aes(x=Latitude, y=ABM), col = Order) + 
+  geom_point(aes(colour = Order)) +
+  ylim(0, 1000) +
+  xlab("Latitude") +
+  ylab("Average Body Mass, g") +
+  scale_color_grey()+
+  scale_color_brewer(palette="Spectral")
+  
+BR_lat.plot
+BR_lat_low.plot
+```
+
+#Bergmann's Relationships ABM~Temperature
+```{r}
+#Need to create df ???site ~ temperature
+sites$Latitude <- as.numeric.factor(sites$Latitude)
+sites$Longitude <- as.numeric.factor(sites$Longitude)
+
+temp <- full_join(temp, sites)
+temp <- temp[,1:4]
+temp <- unique(temp, incomparables = FALSE, fromLast = FALSE)
+temp <- temp[match(rownames(SbyS), temp$Site_ID),]
+temp$Temp <- temp$Temp /10
+
+df_BR_temp <- cbind(temp[3], AW_Artiodactyla, AW_Carnivora, AW_Cingulata, AW_Diprotodontia, AW_Didelphimorphia, AW_Dasyuromorphia,  AW_Lagomorpha, AW_Peramelemorphia, AW_Primates, AW_Rodentia, AW_Scandentia) 
+
+#df_BR_temp <- inner_join(df_BR_temp, df, by = "Temp")
+df_BR_temp_melt <- melt(df_BR_temp,  id.vars = 'Temp', variable.name = 'Order')
+colnames(df_BR_temp_melt) <- c("Temperature", "Order", "ABM")
+df_BR_temp_melt <- df_BR_temp_melt[complete.cases(df_BR_temp_melt), ]
+
+
+arti <- cbind(df_BR_temp[,1], df_BR_temp[,2]) 
+arti <- arti[complete.cases(arti), ]
+Arti1 <- lm(arti[,2] ~ arti[,1])
+
+carn <- cbind(df_BR_temp[,1], df_BR_temp[,3]) 
+carn <- carn[complete.cases(carn), ]
+Carn1 <- lm(carn[,2] ~ carn[,1])
+
+cing <- cbind(df_BR_temp[,1], df_BR_temp[,4]) 
+cing <- cing[complete.cases(cing), ]
+Cing1 <- lm(cing[,2] ~ cing[,1])
+
+dipr <- cbind(df_BR_temp[,1], df_BR_temp[,5]) 
+dipr <- dipr[complete.cases(dipr), ]
+Dipr1 <- lm(dipr[,2] ~ dipr[,1])
+
+dasy <- cbind(df_BR_temp[,1], df_BR_temp[,6]) 
+dasy <- dasy[complete.cases(dasy), ]
+Dasy1 <- lm(dasy[,2] ~ dasy[,1])
+
+dide <- cbind(df_BR_temp[,1], df_BR_temp[,7]) 
+dide <- dide[complete.cases(dide), ]
+Dide1 <- lm(dide[,2] ~ dide[,1])
+
+lago <- cbind(df_BR_temp[,1], df_BR_temp[,8]) 
+lago <- lago[complete.cases(lago), ]
+Lago1 <- lm(lago[,2] ~ lago[,1])
+
+pera <- cbind(df_BR_temp[,1], df_BR_temp[,9]) 
+pera <- pera[complete.cases(pera), ]
+Pera1 <- lm(pera[,2] ~ pera[,1])
+
+prim <- cbind(df_BR_temp[,1], df_BR_temp[,10]) 
+prim <- prim[complete.cases(prim), ]
+Prim1 <- lm(prim[,2] ~ prim[,1])
+
+rode <- cbind(df_BR_temp[,1], df_BR_temp[,11]) 
+rode <- rode[complete.cases(rode), ]
+Rode1 <- lm(rode[,2] ~ rode[,1])
+
+scan <- cbind(df_BR_temp[,1], df_BR_temp[,12]) 
+scan <- scan[complete.cases(scan), ]
+Scan1 <- lm(scan[,2] ~ scan[,1])
+
+BR_temp.plot <- ggplot(df_BR_temp_melt, aes(x=Temperature, y=ABM), col = Order) + 
+  geom_point(aes(colour = Order)) +
+  ylim(0, 100000) +
+  xlab("Temperature, °C") +
+  ylab("Average Body Mass, g") +
+  scale_color_brewer(palette="Spectral")
+
+BR_temp_low.plot <- ggplot(df_BR_temp_melt, aes(x=Temperature, y=ABM), col = Order) + 
+  geom_point(aes(colour = Order)) + 
+  ylim(0, 1000) +
+  xlab("Temperature, °C") +
+  ylab("Average Body Mass, g") +
+  scale_color_brewer(palette="Spectral")
+  
+ 
+BR_temp.plot
+BR_temp_low.plot
+
+```
+
+R^2 data frame from latitude
+```{r}
+BR_summary <- data.frame(matrix(NA, nrow = 11, ncol = 3))
+colnames(BR_summary) <- c("Slope", "R_sq", "Correlation")
+rownames(BR_summary) <- c("Artiodactyla", "Carnivora", "Cingulata", "Dasyurommorphia", "Didelphimorphia", "Diprotodontia", "Lagomorpha", "Peramelemorphia", "Primates", "Rodentia", "Scandentia")
+BR_summary$R_sq[1] <- summary(Arti)$r.squared
+BR_summary$R_sq[2] <- summary(Carn)$r.squared
+BR_summary$R_sq[3] <- summary(Cing)$r.squared
+BR_summary$R_sq[4] <- summary(Dasy)$r.squared
+BR_summary$R_sq[5] <- summary(Dide)$r.squared
+BR_summary$R_sq[6] <- summary(Dipr)$r.squared
+BR_summary$R_sq[7] <- summary(Lago)$r.squared
+BR_summary$R_sq[8] <- summary(Pera)$r.squared
+BR_summary$R_sq[9] <- summary(Prim)$r.squared
+BR_summary$R_sq[10] <- summary(Rode)$r.squared
+BR_summary$R_sq[11] <- summary(Scan)$r.squared
+
+BR_summary$Slope[1] <- coef(Arti)[2]
+BR_summary$Slope[2] <- coef(Carn)[2]
+BR_summary$Slope[3] <- coef(Cing)[2]
+BR_summary$Slope[4] <- coef(Dasy)[2]
+BR_summary$Slope[5] <- coef(Dide)[2]
+BR_summary$Slope[6] <- coef(Dipr)[2]
+BR_summary$Slope[7] <- coef(Lago)[2]
+BR_summary$Slope[8] <- coef(Pera)[2]
+BR_summary$Slope[9] <- coef(Prim)[2]
+BR_summary$Slope[10] <- coef(Rode)[2]
+BR_summary$Slope[11] <- coef(Scan)[2]
+
+for (i in (1:11)){
+  if (BR_summary$R_sq[i] >= 0.1){
+    if (BR_summary$Slope[i] > 0){
+       BR_summary$Correlation[i] <- "BR"}
+    else {if (BR_summary$Slope[i] < 0){
+       BR_summary$Correlation[i] <- "anti-BR"}}
+    }
+  else {BR_summary$Correlation[i] <- "-"}}
+```
+
+
+R^2 data frame from Temperature
+```{r}
+BR_summary_T <- data.frame(matrix(NA, nrow = 11, ncol = 3))
+colnames(BR_summary_T) <- c("Slope", "R_sq", "Correlation")
+rownames(BR_summary_T) <- c("Artiodactyla", "Carnivora", "Cingulata", "Dasyurommorphia", "Didelphimorphia", "Diprotodontia", "Lagomorpha", "Peramelemorphia", "Primates", "Rodentia", "Scandentia")
+BR_summary_T$R_sq[1] <- summary(Arti1)$r.squared
+BR_summary_T$R_sq[2] <- summary(Carn1)$r.squared
+BR_summary_T$R_sq[3] <- summary(Cing1)$r.squared
+BR_summary_T$R_sq[4] <- summary(Dasy1)$r.squared
+BR_summary_T$R_sq[5] <- summary(Dide1)$r.squared
+BR_summary_T$R_sq[6] <- summary(Dipr1)$r.squared
+BR_summary_T$R_sq[7] <- summary(Lago1)$r.squared
+BR_summary_T$R_sq[8] <- summary(Pera1)$r.squared
+BR_summary_T$R_sq[9] <- summary(Prim1)$r.squared
+BR_summary_T$R_sq[10] <- summary(Rode1)$r.squared
+BR_summary_T$R_sq[11] <- summary(Scan1)$r.squared
+
+BR_summary_T$Slope[1] <- coef(Arti1)[2]
+BR_summary_T$Slope[2] <- coef(Carn1)[2]
+BR_summary_T$Slope[3] <- coef(Cing1)[2]
+BR_summary_T$Slope[4] <- coef(Dasy1)[2]
+BR_summary_T$Slope[5] <- coef(Dide1)[2]
+BR_summary_T$Slope[6] <- coef(Dipr1)[2]
+BR_summary_T$Slope[7] <- coef(Lago1)[2]
+BR_summary_T$Slope[8] <- coef(Pera1)[2]
+BR_summary_T$Slope[9] <- coef(Prim1)[2]
+BR_summary_T$Slope[10] <- coef(Rode1)[2]
+BR_summary_T$Slope[11] <- coef(Scan1)[2]
+
+for (i in (1:11)){
+  if (BR_summary_T$R_sq[i] >= 0.1){
+    if (BR_summary_T$Slope[i] < 0){
+       BR_summary_T$Correlation[i] <- "BR"}
+    else {if (BR_summary_T$Slope[i] > 0){
+       BR_summary_T$Correlation[i] <- "anti-BR"}}
+    }
+  else {BR_summary_T$Correlation[i] <- "-"}}
+```
+
+
+## 6) DISCUSSION AND CONCLUSION
+The overall goal of the project was to gain insight into the mammalian distribution patterns across a variety of taxa spread across the globe. More specifically, the study was aimed to understand the influence of climatic variables and body-size in mammalian distributions across the globe. 
+(a) Climatic variables: Species richness, evenness, and Simpson's diversity index (richness and evenness) showed no relationship with climatic variables like temperature and precipitation (Rsq ~ 0) 
+Precipitation and temperature alone showed no relationships with richness. 
+Further, the ordination analysis showed that ~ 40% of the variation was explained by PCoA axes when the mammalian species were grouped by their respective taxonomic "Order". However, there was no clustering of points with respect to the taxonomic order, or its geographical location. Similarly, the study finds that spatial variation in mammalian community was poorly explained by the climatic variables (RDA ~ 6%) 
+(b) Body-Size: The study shows that of the 12 mammalian taxonomic orders considered, only one order(Primates) followed the Bergmann's rule, three (Didelphimorphia, Diprotodontia, Peramelemorphia) displayed the opposite trend, while the rest  groups of mammals do not show any correlation between geographical parameters and body size. In addition, neither maximum body weight of mammals in the community, nor minimum was dependent on the temperature or latitude. 
+Overall, the results of this study are in stark contrast to previously known results of mammalian distribution patterns. Two key-drivers of distribution, external factors (climatic variables) and internal factors (body-size) failed to explain spatial variation in mammalian communities. This could be attributed to several reasons. First, it is possible that changes in insulation and other heat-conserving mechanisms is more important than changes in body size that could result in violation of Bergmann's rule. Thus, most taxonomic groups are perhaps more plastic in their response to environment changes than previously anticipated. Second, mammals could be responding to changes in seasonality than paying attention to overall temperature alone, that could result in temporal clustering and dispersion that is not captured by meta-data. Third, a large proportion of data is focused on rodent populations. It is likely that, small rodent populations are more sensitive to the immediate habitat structure than larger species. Thus, habitat structure and urban development may play a much greater role in explaining mammalian distributions. Fourth, there may be disparity in the time of data collection to the annual average climate data/ average body size that is used in the analysis. However, given this large data-set it is unlikely that a true signal in the data would be masked by relatively minor noise in the data. 
+In general, we find no conclusive evidence of climatic variables or body-size influencing mammalian distribution patterns. While we acknowledge the possibilities of other factors that could potentially affect the distribution, we also cautiously state that perhaps mammalian distribution could be truly random and that any other pattern found could be by chance alone. 
+
+## 7) REFERENCES
+1. K. M. Thibault, S. R. Supp, M. Giffin, E. P. White, S. K. Morgan Ernest. 2011. Species composition and abundance of mammalian communities. Ecology 92:2316.
+
+2. K. G. Ashton, M. C. Tracy, A. de Queiroz. Is Bergmann's Rule Valid for Mammals? The American Naturalist, Vol. 156, No. 4 (October 2000), pp. 390-415
+
+3. K. E. Jones, J. Bielby, M. Cardillo, S. A. Fritz, J. O'Dell, C. D. L. Orme, K. Safi, W. Sechrest, E. H. Boakes, Ch. Carbone, Ch. Connolly, M. J. Cutts, J. K. Foster, R. Grenyer, M. Habib, C.r A. Plaster, S. A. Price, E. A. Rigby, J. Rist, A. Teacher, O. R. P. Bininda-Emonds, J. L. Gittleman, G. M. Mace,  A.y Purvis. 2009. PanTHERIA: a species-level database of life history, ecology, and geography of extant and recently extinct mammals. Ecology 90:2648.
+
+4. T. M. Blackburn, B. A. Hawkins. Bergmann's Rule and the Mammal Fauna of Northern North America. Ecography, 2004, Vol. 27, No. 6, pp. 715-724 
+ 
+5. S. Meiri, T. Dayan. On the validity of Bergmann's rule. Journal of Biogeography. V. 30, Is. 3, 2003, pp. 331-351
+
+6. J. Brown, J. Gillooly, A. Allen, V. Savage, G. West. A Metabolic Theory of Ecology. Ecology, 85(7), 2004, Pp. 1771-1789.
+
+7. B. A. Hawkins, et al. A Global Evaluation of Metabolic Theory as an Explanation for Terrestrial Species Richness Gradients. Volume 88, 2007, pp. 1877-1888
+
+8. A. C. Algar, J. T. Kerr, D. J. Currie. A test of Metabolic Theory as the mechanism underlying broad-scale species-richness gradients. Volume 16, Issue 2, 2007, pp. 170-178
